@@ -1,0 +1,79 @@
+// Copyright (c) 2021 Nordix Foundation.
+//
+// SPDX-License-Identifier: Apache-2.0
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at:
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package kernel
+
+import (
+	"context"
+
+	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
+
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
+)
+
+type kernelServer struct {
+	bridgeName string
+}
+
+// NewServer - return a new Server chain element implementing the kernel mechanism with vpp using a veth pair
+func NewServer(bridgeName string) networkservice.NetworkServiceServer {
+	return &kernelServer{bridgeName}
+
+}
+
+func (k *kernelServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+	logger := log.FromContext(ctx).WithField("kernelServer", "Request")
+	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
+	if !exists {
+		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, false); err != nil {
+			_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, false)
+			return nil, err
+		}
+	}
+	conn, err := next.Server(ctx).Request(ctx, request)
+	if err != nil && err.Error() != "no token ID provided" && !exists {
+		_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, false)
+		return nil, err
+	}
+	if exists {
+		if err := setupVF(ctx, logger, k.bridgeName, false); err != nil {
+			return nil, err
+		}
+	}
+	return conn, nil
+}
+
+func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+	logger := log.FromContext(ctx).WithField("kernelServer", "Close")
+	ovsPortInfo, exists := ifnames.Load(ctx, true)
+	if exists {
+		if !ovsPortInfo.IsVfRepresentor {
+			if err := resetVeth(ctx, logger, conn, k.bridgeName, false); err != nil {
+				return nil, err
+			}
+		} else {
+			if err := resetVF(logger, ovsPortInfo, k.bridgeName); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return next.Server(ctx).Close(ctx, conn)
+}
