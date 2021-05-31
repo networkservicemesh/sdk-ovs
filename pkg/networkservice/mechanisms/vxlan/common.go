@@ -29,11 +29,11 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
-	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/util"
+	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
-	vxlanInterfacesMutex *sync.Mutex, vxlanRefCountMap map[string]int, isClient bool) error {
+	vxlanInterfacesMutex sync.Locker, vxlanRefCountMap map[string]int, isClient bool) error {
 	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		if _, ok := ifnames.Load(ctx, isClient); ok {
 			return nil
@@ -62,7 +62,7 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 			}
 			vxlanRefCountMap[ovsTunnelName] = 0
 		}
-		vxlanRefCountMap[ovsTunnelName] += 1
+		vxlanRefCountMap[ovsTunnelName]++
 		ovsTunnelPortNum, err := ovsutil.GetInterfaceOfPort(logger, ovsTunnelName)
 		if err != nil {
 			return err
@@ -77,8 +77,8 @@ func getTunnelPortName(remoteIP string) string {
 	return "v" + strings.ReplaceAll(remoteIP, ".", "")
 }
 
-func remove(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
-	vxlanInterfacesMutex *sync.Mutex, vxlanRefCountMap map[string]int, isClient bool) error {
+func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesMutex sync.Locker,
+	vxlanRefCountMap map[string]int, isClient bool) error {
 	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		var remoteIP net.IP
 		if !isClient {
@@ -94,10 +94,8 @@ func remove(ctx context.Context, logger log.Logger, conn *networkservice.Connect
 				return errors.Wrapf(err, "failed to delete VXLAN interface")
 			}
 			delete(vxlanRefCountMap, ovsTunnelName)
-		} else {
-			if exists := vxlanRefCountMap[ovsTunnelName]; exists != 0 {
-				vxlanRefCountMap[ovsTunnelName] -= 1
-			}
+		} else if count := vxlanRefCountMap[ovsTunnelName]; count > 1 {
+			vxlanRefCountMap[ovsTunnelName]--
 		}
 	}
 	return nil

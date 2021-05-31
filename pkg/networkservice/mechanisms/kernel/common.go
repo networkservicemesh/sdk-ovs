@@ -28,7 +28,7 @@ import (
 	"github.com/vishvananda/netlink"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
-	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/util"
+	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 const (
@@ -68,7 +68,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	return nil
 }
 
-func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+func resetVeth(logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
 	ifaceName := GetOvsInterfaceName(conn, isClient)
 	/* delete the port from ovs bridge */
 	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
@@ -127,6 +127,8 @@ func newVETH(srcName, dstName string) *netlink.Veth {
 	}
 }
 
+// GetInterfaceName get kernel interface name for the given connection.
+// TODO: consume from sdk once this method is moved
 func GetInterfaceName(conn *networkservice.Connection, isClient bool) string {
 	namingConn := conn.Clone()
 	namingConn.Id = namingConn.GetPrevPathSegment().GetId()
@@ -136,6 +138,7 @@ func GetInterfaceName(conn *networkservice.Connection, isClient bool) string {
 	return kernel.ToMechanism(conn.GetMechanism()).GetInterfaceName(namingConn)
 }
 
+// GetOvsInterfaceName get ovs interface name for the given connection.
 func GetOvsInterfaceName(conn *networkservice.Connection, isClient bool) string {
 	namingConn := conn.Clone()
 	prefix := srcPrefix

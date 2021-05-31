@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package l2ovsconnect chain element which cross connects both client and endpoint.
+// This suppports both local and remote (vxlan) cross connections.
 package l2ovsconnect
 
 import (
@@ -31,6 +33,7 @@ type l2ConnectServer struct {
 	bridgeName string
 }
 
+// NewServer creates l2 connect server
 func NewServer(bridgeName string) networkservice.NetworkServiceServer {
 	return &l2ConnectServer{bridgeName}
 }
@@ -67,15 +70,12 @@ func addDel(ctx context.Context, logger log.Logger, bridgeName string, addDel bo
 	}
 	if !endpointOvsPortInfo.IsTunnelPort && !clientOvsPortInfo.IsTunnelPort {
 		if addDel {
-			return createLocalCrossConnect(ctx, logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
-		} else {
-			return deleteLocalCrossConnect(ctx, logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
+			return createLocalCrossConnect(logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
 		}
-	} else {
-		if addDel {
-			return createRemoteCrossConnect(ctx, logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
-		} else {
-			return deleteRemoteCrossConnect(ctx, logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
-		}
+		return deleteLocalCrossConnect(logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
 	}
+	if addDel {
+		return createRemoteCrossConnect(logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
+	}
+	return deleteRemoteCrossConnect(logger, bridgeName, endpointOvsPortInfo, clientOvsPortInfo)
 }

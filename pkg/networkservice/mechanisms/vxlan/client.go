@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package vxlan implements vxlan remote mechanism client and server chain element
 package vxlan
 
 import (
@@ -34,17 +35,16 @@ import (
 
 type vxlanClient struct {
 	bridgeName           string
-	vxlanInterfacesMutex *sync.Mutex
+	vxlanInterfacesMutex sync.Locker
 	vxlanInterfacesMap   map[string]int
 }
 
 // NewClient returns a Vxlan client chain element
-func NewClient(tunnelIP net.IP, bridgeName string, mutex *sync.Mutex, vxlanRefCountMap map[string]int) networkservice.NetworkServiceClient {
+func NewClient(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int) networkservice.NetworkServiceClient {
 	return chain.NewNetworkServiceClient(
 		&vxlanClient{
 			bridgeName: bridgeName, vxlanInterfacesMutex: mutex, vxlanInterfacesMap: vxlanRefCountMap,
 		},
-		// TODO: vni client is from sdk-vpp, work with nsm community to host this into sdk repo
 		vni.NewClient(tunnelIP),
 	)
 }
@@ -60,17 +60,19 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 		return nil, err
 	}
 	if err := add(ctx, logger, request.Connection, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		_ = remove(ctx, logger, request.Connection, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+		_ = remove(request.Connection, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
 		return nil, err
 	}
 	return conn, nil
 }
 
 func (c *vxlanClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("vxlanClient", "Close")
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
-	if err := remove(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
+	if err != nil {
 		return nil, err
 	}
-	return rv, err
+	if err := remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
+		return nil, err
+	}
+	return rv, nil
 }

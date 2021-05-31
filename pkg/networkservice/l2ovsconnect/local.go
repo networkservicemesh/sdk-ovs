@@ -17,7 +17,6 @@
 package l2ovsconnect
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -26,7 +25,7 @@ import (
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
-func createLocalCrossConnect(ctx context.Context, logger log.Logger, bridgeName string, endpointOvsPortInfo,
+func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo,
 	clientOvsPortInfo ifnames.OvsPortInfo) error {
 	stdout, stderr, err := util.RunOVSOfctl("add-flow", bridgeName, fmt.Sprintf("priority=100, in_port=%d,"+
 		" actions=output:%d", endpointOvsPortInfo.PortNo, clientOvsPortInfo.PortNo))
@@ -55,7 +54,7 @@ func createLocalCrossConnect(ctx context.Context, logger log.Logger, bridgeName 
 	return nil
 }
 
-func deleteLocalCrossConnect(ctx context.Context, logger log.Logger, bridgeName string, endpointOvsPortInfo,
+func deleteLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo,
 	clientOvsPortInfo ifnames.OvsPortInfo) error {
 	stdout, stderr, err := util.RunOVSOfctl("del-flows", bridgeName, fmt.Sprintf("in_port=%d",
 		endpointOvsPortInfo.PortNo))

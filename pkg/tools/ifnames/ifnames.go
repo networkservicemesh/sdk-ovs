@@ -14,6 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package ifnames provides caching facilty for ovs port info using
+// metadata store. This is mainly used by mechanism and l2ovsconnect
+// chain elements
 package ifnames
 
 import (
@@ -24,6 +27,7 @@ import (
 
 type key struct{}
 
+// OvsPortInfo ovs port info container
 type OvsPortInfo struct {
 	PortName        string
 	PortNo          int
@@ -32,14 +36,17 @@ type OvsPortInfo struct {
 	VNI             uint32
 }
 
+// Store stores ovsPortInfo for the given cross connect, isClient identfies which connection it is.
 func Store(ctx context.Context, isClient bool, ovsPortInfo OvsPortInfo) {
 	metadata.Map(ctx, isClient).Store(key{}, ovsPortInfo)
 }
 
+// Delete deletes a specific ovsPortInfo from cache
 func Delete(ctx context.Context, isClient bool) {
 	metadata.Map(ctx, isClient).Delete(key{})
 }
 
+// Load retrieves ovsPortInfo from cache for a given connection
 func Load(ctx context.Context, isClient bool) (value OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).Load(key{})
 	if !ok {
@@ -49,6 +56,7 @@ func Load(ctx context.Context, isClient bool) (value OvsPortInfo, ok bool) {
 	return value, ok
 }
 
+// LoadOrStore retrievs ovsPortInfo from cache. If it doesn't exist, store it with given ovsPortInfo
 func LoadOrStore(ctx context.Context, isClient bool, ovsPortInfo OvsPortInfo) (value OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).LoadOrStore(key{}, ovsPortInfo)
 	if !ok {
@@ -58,6 +66,7 @@ func LoadOrStore(ctx context.Context, isClient bool, ovsPortInfo OvsPortInfo) (v
 	return value, ok
 }
 
+// LoadAndDelete retrievs ovsPortInfo from cache and also also delete it from the cache.
 func LoadAndDelete(ctx context.Context, isClient bool) (value OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).LoadAndDelete(key{})
 	if !ok {

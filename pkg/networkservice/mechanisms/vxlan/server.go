@@ -34,14 +34,13 @@ import (
 
 type vxlanServer struct {
 	bridgeName           string
-	vxlanInterfacesMutex *sync.Mutex
+	vxlanInterfacesMutex sync.Locker
 	vxlanInterfacesMap   map[string]int
 }
 
 // NewServer - returns a new server for the vxlan remote mechanism
-func NewServer(tunnelIP net.IP, bridgeName string, mutex *sync.Mutex, vxlanRefCountMap map[string]int) networkservice.NetworkServiceServer {
+func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int) networkservice.NetworkServiceServer {
 	return chain.NewNetworkServiceServer(
-		// TODO: vni server is from sdk-vpp, work with nsm community to host this into sdk repo
 		vni.NewServer(tunnelIP),
 		&vxlanServer{
 			bridgeName: bridgeName, vxlanInterfacesMutex: mutex, vxlanInterfacesMap: vxlanRefCountMap,
@@ -64,8 +63,7 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 }
 
 func (v *vxlanServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("vxlanServer", "Close")
-	if err := remove(ctx, logger, conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
+	if err := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
 		return nil, err
 	}
 	return next.Server(ctx).Close(ctx, conn)

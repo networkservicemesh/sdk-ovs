@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package xconnectns provides interpose endpoint implementation for ovs forwarder
+// which provides kernel and smartnic endpoints
 package xconnectns
 
 import (
@@ -41,16 +43,13 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanismtranslation"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
-	ovsutil "github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"google.golang.org/grpc"
-	kexec "k8s.io/utils/exec"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/l2ovsconnect"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/vxlan"
-	"github.com/networkservicemesh/sdk-ovs/pkg/tools/util"
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 type ovsConnectNSServer struct {
@@ -59,14 +58,15 @@ type ovsConnectNSServer struct {
 
 // NewSriovServer - returns sriov implementation of the ovsconnectns network service
 func NewSriovServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
-	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIpCidr net.IP,
+	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
 	pciPool resourcepool.PCIPool, resourcePool resourcepool.ResourcePool, sriovConfig *config.Config,
 	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	resourceLock := &sync.Mutex{}
-	tunnelIP, err := util.ParseTunnelIP(tunnelIpCidr)
+	tunnelIP, err := utils.ParseTunnelIP(tunnelIPCidr)
 	if err != nil {
 		return nil, err
 	}
+	utils.ConfigureOvS(ctx, bridgeName)
 	vxlanInterfacesMutex := &sync.Mutex{}
 	vxlanInterfaces := make(map[string]int)
 	rv := &ovsConnectNSServer{}
@@ -85,11 +85,11 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 						mechanismtranslation.NewClient(),
 						connectioncontextkernel.NewClient(),
 						// TODO: uncomment once inject chain element has NewClient
-						//inject.NewClient(),
+						// inject.NewClient(),
 						// mechanisms
 						kernel.NewClient(bridgeName),
 						// TODO: uncomment once resourcepool chain element has NewClient
-						//resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
+						// resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
 						vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 						recvfd.NewClient(),
 						sendfd.NewClient(),
@@ -122,12 +122,13 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 
 // NewKernelServer - returns kernel implementation of the ovsconnectns network service
 func NewKernelServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
-	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIpCidr net.IP,
+	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
 	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
-	tunnelIP, err := util.ParseTunnelIP(tunnelIpCidr)
+	tunnelIP, err := utils.ParseTunnelIP(tunnelIPCidr)
 	if err != nil {
 		return nil, err
 	}
+	utils.ConfigureOvS(ctx, bridgeName)
 	vxlanInterfacesMutex := &sync.Mutex{}
 	vxlanInterfaces := make(map[string]int)
 	rv := &ovsConnectNSServer{}
@@ -146,7 +147,7 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 						mechanismtranslation.NewClient(),
 						connectioncontextkernel.NewClient(),
 						// TODO: uncomment once inject chain element has NewClient
-						//inject.NewClient(),
+						// inject.NewClient(),
 						// mechanisms
 						kernel.NewClient(bridgeName),
 						vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
@@ -176,25 +177,4 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 		endpoint.WithAdditionalFunctionality(additionalFunctionality...))
 
 	return rv, nil
-}
-
-func configureOvS(ctx context.Context, bridgeName string) {
-	// Initialize the ovs utility wrapper.
-	exec := kexec.New()
-	if err := ovsutil.SetExec(exec); err != nil {
-		log.FromContext(ctx).Warnf("failed to initialize ovs exec helper: %v", err)
-	}
-
-	// Create ovs bridge for client and endpoint connections
-	stdout, stderr, err := ovsutil.RunOVSVsctl("--", "--may-exist", "add-br", bridgeName)
-	if err != nil {
-		log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
-	}
-
-	// Clean the flows from the above created ovs bridge
-	stdout, stderr, err = ovsutil.RunOVSOfctl("del-flows", bridgeName)
-	if err != nil {
-		log.FromContext(ctx).Warnf("Failed to cleanup flows on %s "+
-			"stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
-	}
 }

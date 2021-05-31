@@ -14,19 +14,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package util
+package utils
 
 import (
-	"fmt"
-	"net"
+	"context"
 	"strconv"
 	"time"
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
+	kexec "k8s.io/utils/exec"
 )
 
-// Get Port number from Interface name in OVS
+// GetInterfaceOfPort get Port number from Interface name in OVS
 func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 	var portNo, count int
 	count = 5
@@ -36,15 +36,15 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 			return -1, err
 		}
 		if stdErr != "" {
-			logger.Infof("ovsutils: error occured while retrieving of port for interface %s - %s", interfaceName, stdErr)
+			logger.Infof("error occurred while retrieving of port for interface %s - %s", interfaceName, stdErr)
 		}
 		portNo, err = strconv.Atoi(ofPort)
 		if err != nil {
 			return -1, err
 		}
 		if portNo == 0 {
-			logger.Infof("ovsutils: got port number %d for interface %s, retrying", portNo, interfaceName)
-			count = count - 1
+			logger.Infof("got port number %d for interface %s, retrying", portNo, interfaceName)
+			count--
 			time.Sleep(500 * time.Millisecond)
 			continue
 		} else {
@@ -54,28 +54,24 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 	return portNo, nil
 }
 
-func ParseTunnelIP(srcIP net.IP) (net.IP, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, err
+// ConfigureOvS creates ovs bridge and make it as an integration bridge
+func ConfigureOvS(ctx context.Context, bridgeName string) {
+	// Initialize the ovs utility wrapper.
+	exec := kexec.New()
+	if err := util.SetExec(exec); err != nil {
+		log.FromContext(ctx).Warnf("failed to initialize ovs exec helper: %v", err)
 	}
 
-	for _, iface := range ifaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
-			continue
-		}
-		for _, addr := range addrs {
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ipAddr := v.IP
-				mask := v.Mask
-				ipMask := ipAddr.Mask(mask)
-				if v.IP.Equal(srcIP) || ipMask.Equal(srcIP) {
-					return v.IP, nil
-				}
-			}
-		}
+	// Create ovs bridge for client and endpoint connections
+	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-br", bridgeName)
+	if err != nil {
+		log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
 	}
-	return nil, fmt.Errorf("error in parsing tunnel ip address: %v", srcIP)
+
+	// Clean the flows from the above created ovs bridge
+	stdout, stderr, err = util.RunOVSOfctl("del-flows", bridgeName)
+	if err != nil {
+		log.FromContext(ctx).Warnf("Failed to cleanup flows on %s "+
+			"stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
+	}
 }

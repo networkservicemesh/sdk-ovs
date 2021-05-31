@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package kernel implements client and server kernel mechanism chain element supports
+// both kernel and smartvf datapath
 package kernel
 
 import (
@@ -23,18 +25,20 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"google.golang.org/grpc"
+
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
 type kernelClient struct {
 	bridgeName string
 }
 
+// NewClient returns a client chain element implementing kernel mechanism with veth pair or smartvf
 func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 	return &kernelClient{bridgeName}
 }
@@ -72,7 +76,7 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 	ovsPortInfo, exists := ifnames.Load(ctx, true)
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			if err := resetVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
+			if err := resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
 				return nil, err
 			}
 		} else {

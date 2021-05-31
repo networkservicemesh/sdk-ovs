@@ -25,7 +25,7 @@ import (
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
-	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/util"
+	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 func setupVF(ctx context.Context, logger log.Logger, bridgeName string, isClient bool) error {
@@ -60,6 +60,7 @@ func resetVF(logger log.Logger, portInfo ifnames.OvsPortInfo, bridgeName string)
 	if err != nil {
 		logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 			" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
+		return err
 	}
 	return nil
 }

@@ -32,24 +32,25 @@ type kernelServer struct {
 	bridgeName string
 }
 
-// NewServer - return a new Server chain element implementing the kernel mechanism with vpp using a veth pair
+// NewServer - return a new Server chain element implementing the kernel mechanism with veth pair or smartvf
 func NewServer(bridgeName string) networkservice.NetworkServiceServer {
 	return &kernelServer{bridgeName}
-
 }
 
+// NewClient create a kernel server chain element which would be useful to do network plumbing
+// for service client container
 func (k *kernelServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelServer", "Request")
 	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
 	if !exists {
 		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, false); err != nil {
-			_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, false)
+			_ = resetVeth(logger, request.Connection, k.bridgeName, false)
 			return nil, err
 		}
 	}
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil && err.Error() != "no token ID provided" && !exists {
-		_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, false)
+		_ = resetVeth(logger, request.Connection, k.bridgeName, false)
 		return nil, err
 	}
 	if exists {
@@ -65,7 +66,7 @@ func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connectio
 	ovsPortInfo, exists := ifnames.Load(ctx, true)
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			if err := resetVeth(ctx, logger, conn, k.bridgeName, false); err != nil {
+			if err := resetVeth(logger, conn, k.bridgeName, false); err != nil {
 				return nil, err
 			}
 		} else {

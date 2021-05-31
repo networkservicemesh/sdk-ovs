@@ -17,7 +17,6 @@
 package l2ovsconnect
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -26,8 +25,7 @@ import (
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
-func createRemoteCrossConnect(ctx context.Context, logger log.Logger, bridgeName string, endpointOvsPortInfo,
-	clientOvsPortInfo ifnames.OvsPortInfo) error {
+func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo ifnames.OvsPortInfo) error {
 	var (
 		ovsLocalPortNum, ovsTunnelPortNum int
 		ovsLocalPort, ovsTunnelPort       string
@@ -76,8 +74,7 @@ func createRemoteCrossConnect(ctx context.Context, logger log.Logger, bridgeName
 	return nil
 }
 
-func deleteRemoteCrossConnect(ctx context.Context, logger log.Logger, bridgeName string, endpointOvsPortInfo,
-	clientOvsPortInfo ifnames.OvsPortInfo) error {
+func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo ifnames.OvsPortInfo) error {
 	var (
 		ovsLocalPortNum, ovsTunnelPortNum int
 		ovsLocalPort, ovsTunnelPort       string
