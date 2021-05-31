@@ -18,7 +18,7 @@
 package utils
 
 import (
-	"fmt"
+	"errors"
 	"net"
 )
 
@@ -48,5 +48,5 @@ func ParseTunnelIP(srcIP net.IP) (net.IP, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("error in parsing tunnel ip address: %v", srcIP)
+	return nil, errors.New("error in parsing tunnel ip address")
 }
