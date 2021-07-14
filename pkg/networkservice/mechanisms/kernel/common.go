@@ -38,13 +38,14 @@ const (
 )
 
 func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
+	var mechanism *kernel.Mechanism
+	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
 		return nil
 	}
 	if _, ok := ifnames.Load(ctx, isClient); ok {
 		return nil
 	}
-	contIfName := GetInterfaceName(conn, isClient)
+	contIfName := mechanism.GetInterfaceName()
 	hostIfName := GetOvsInterfaceName(conn, isClient)
 	if err := createInterfaces(contIfName, hostIfName); err != nil {
 		return err
@@ -125,17 +126,6 @@ func newVETH(srcName, dstName string) *netlink.Veth {
 		},
 		PeerName: dstName,
 	}
-}
-
-// GetInterfaceName get kernel interface name for the given connection.
-// TODO: consume from sdk once this method is moved
-func GetInterfaceName(conn *networkservice.Connection, isClient bool) string {
-	namingConn := conn.Clone()
-	namingConn.Id = namingConn.GetPrevPathSegment().GetId()
-	if isClient {
-		namingConn.Id = namingConn.GetNextPathSegment().GetId()
-	}
-	return kernel.ToMechanism(conn.GetMechanism()).GetInterfaceName(namingConn)
 }
 
 // GetOvsInterfaceName get ovs interface name for the given connection.
