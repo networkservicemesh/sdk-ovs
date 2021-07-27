@@ -75,27 +75,23 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 		recvfd.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
-		connect.NewServer(
-			ctx,
-			func(ctx context.Context, cc grpc.ClientConnInterface) networkservice.NetworkServiceClient {
-				return client.NewClient(ctx,
-					cc,
-					client.WithName(name),
-					client.WithAdditionalFunctionality(
-						mechanismtranslation.NewClient(),
-						connectioncontextkernel.NewClient(),
-						// TODO: uncomment once inject chain element has NewClient
-						// inject.NewClient(),
-						// mechanisms
-						kernel.NewClient(bridgeName),
-						// TODO: uncomment once resourcepool chain element has NewClient
-						// resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
-						vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
-						recvfd.NewClient(),
-						sendfd.NewClient(),
-					),
-				)
-			},
+		connect.NewServer(ctx,
+			client.NewClientFactory(
+				client.WithName(name),
+				client.WithAdditionalFunctionality(
+					mechanismtranslation.NewClient(),
+					connectioncontextkernel.NewClient(),
+					// TODO: uncomment once inject chain element has NewClient
+					// inject.NewClient(),
+					// mechanisms
+					kernel.NewClient(bridgeName),
+					// TODO: uncomment once resourcepool chain element has NewClient
+					// resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
+					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+					recvfd.NewClient(),
+					sendfd.NewClient(),
+				),
+			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
@@ -137,25 +133,21 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 		recvfd.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
-		connect.NewServer(
-			ctx,
-			func(ctx context.Context, cc grpc.ClientConnInterface) networkservice.NetworkServiceClient {
-				return client.NewClient(ctx,
-					cc,
-					client.WithName(name),
-					client.WithAdditionalFunctionality(
-						mechanismtranslation.NewClient(),
-						connectioncontextkernel.NewClient(),
-						// TODO: uncomment once inject chain element has NewClient
-						// inject.NewClient(),
-						// mechanisms
-						kernel.NewClient(bridgeName),
-						vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
-						recvfd.NewClient(),
-						sendfd.NewClient(),
-					),
-				)
-			},
+		connect.NewServer(ctx,
+			client.NewClientFactory(
+				client.WithName(name),
+				client.WithAdditionalFunctionality(
+					mechanismtranslation.NewClient(),
+					connectioncontextkernel.NewClient(),
+					// TODO: uncomment once inject chain element has NewClient
+					// inject.NewClient(),
+					// mechanisms
+					kernel.NewClient(bridgeName),
+					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+					recvfd.NewClient(),
+					sendfd.NewClient(),
+				),
+			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
