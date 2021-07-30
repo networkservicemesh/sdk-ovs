@@ -33,6 +33,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/inject"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/rename"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/vfconfig"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
@@ -75,6 +76,7 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
 		recvfd.NewServer(),
+		vfconfig.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
 		connect.NewServer(ctx,
@@ -87,6 +89,8 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 					// mechanisms
 					kernel.NewClient(bridgeName),
 					resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
+					// uncomment when vfconfig client chain element available
+					// vfconfig.NewClient(),
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 					recvfd.NewClient(),
 					sendfd.NewClient(),
