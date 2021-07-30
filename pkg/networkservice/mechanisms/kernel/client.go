@@ -24,8 +24,8 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -53,18 +53,21 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 	if err != nil {
 		return nil, err
 	}
-	_, exists := conn.GetMechanism().GetParameters()[resourcepool.TokenIDKey]
+	_, exists := conn.GetMechanism().GetParameters()[common.PCIAddressKey]
 	if exists {
-		if err := setupVF(ctx, logger, c.bridgeName, metadata.IsClient(c)); err != nil {
-			return nil, err
+		if err = setupVF(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
+			if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+			}
 		}
 	} else {
-		if err := setupVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
-			_, _ = c.Close(ctx, conn, opts...)
-			return nil, err
+		if err = setupVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
+			if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+			}
 		}
 	}
-	return conn, nil
+	return conn, err
 }
 
 func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
@@ -73,17 +76,14 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 	if err != nil {
 		return nil, err
 	}
-	ovsPortInfo, exists := ifnames.Load(ctx, true)
-	if exists {
-		if !ovsPortInfo.IsVfRepresentor {
-			if err := resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
-				return nil, err
-			}
-		} else {
-			if err := resetVF(logger, ovsPortInfo, c.bridgeName); err != nil {
-				return nil, err
-			}
-		}
+	ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
+	if !exists {
+		return rv, nil
 	}
-	return rv, nil
+	if !ovsPortInfo.IsVfRepresentor {
+		err = resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c))
+	} else {
+		err = resetVF(logger, ovsPortInfo, c.bridgeName)
+	}
+	return rv, err
 }

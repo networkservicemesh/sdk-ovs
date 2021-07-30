@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux
+
 // Package xconnectns provides interpose endpoint implementation for ovs forwarder
 // which provides kernel and smartnic endpoints
 package xconnectns
@@ -81,12 +83,10 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
 					connectioncontextkernel.NewClient(),
-					// TODO: uncomment once inject chain element has NewClient
-					// inject.NewClient(),
+					inject.NewClient(),
 					// mechanisms
 					kernel.NewClient(bridgeName),
-					// TODO: uncomment once resourcepool chain element has NewClient
-					// resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
+					resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 					recvfd.NewClient(),
 					sendfd.NewClient(),
@@ -139,8 +139,7 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
 					connectioncontextkernel.NewClient(),
-					// TODO: uncomment once inject chain element has NewClient
-					// inject.NewClient(),
+					inject.NewClient(),
 					// mechanisms
 					kernel.NewClient(bridgeName),
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),

@@ -59,6 +59,11 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 		_, _ = v.Close(ctx, conn)
 		return nil, err
 	}
+
+	if err := add(ctx, logger, request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
+		return nil, err
+	}
+
 	return conn, nil
 }
 

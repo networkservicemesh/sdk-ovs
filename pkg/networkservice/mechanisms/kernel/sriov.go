@@ -20,6 +20,8 @@ import (
 	"context"
 
 	"github.com/Mellanox/sriovnet"
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
@@ -28,7 +30,14 @@ import (
 	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
-func setupVF(ctx context.Context, logger log.Logger, bridgeName string, isClient bool) error {
+func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+	var mechanism *kernel.Mechanism
+	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
+		return nil
+	}
+	if _, ok := ifnames.Load(ctx, isClient); ok {
+		return nil
+	}
 	vfConfig := vfconfig.Config(ctx)
 	// get smart VF representor interface. This is a host net device which represents
 	// smart VF attached inside the container by device plugin. It can be considered

@@ -23,6 +23,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
@@ -43,18 +44,18 @@ func (k *kernelServer) Request(ctx context.Context, request *networkservice.Netw
 	logger := log.FromContext(ctx).WithField("kernelServer", "Request")
 	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
 	if !exists {
-		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, false); err != nil {
-			_ = resetVeth(logger, request.Connection, k.bridgeName, false)
+		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
+			_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 			return nil, err
 		}
 	}
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil && err.Error() != "no token ID provided" && !exists {
-		_ = resetVeth(logger, request.Connection, k.bridgeName, false)
+	if err != nil && !exists {
+		_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 		return nil, err
 	}
 	if exists {
-		if err := setupVF(ctx, logger, k.bridgeName, false); err != nil {
+		if err := setupVF(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
 			return nil, err
 		}
 	}
@@ -66,7 +67,7 @@ func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connectio
 	ovsPortInfo, exists := ifnames.Load(ctx, true)
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			if err := resetVeth(logger, conn, k.bridgeName, false); err != nil {
+			if err := resetVeth(logger, conn, k.bridgeName, metadata.IsClient(k)); err != nil {
 				return nil, err
 			}
 		} else {
