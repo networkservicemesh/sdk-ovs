@@ -59,8 +59,8 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 	if err != nil {
 		return nil, err
 	}
-	if err = add(ctx, logger, request.Connection, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		_ = remove(request.Connection, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+	if err = add(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
+		_ = remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
 		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}

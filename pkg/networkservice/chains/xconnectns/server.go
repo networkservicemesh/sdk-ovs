@@ -40,12 +40,15 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/endpoint"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clienturl"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/connect"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/recvfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanismtranslation"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/adapters"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
+	"github.com/networkservicemesh/sdk/pkg/tools/addressof"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
 	"google.golang.org/grpc"
 
@@ -76,9 +79,20 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
 		recvfd.NewServer(),
+		sendfd.NewServer(),
 		vfconfig.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
+		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
+			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
+				kernel.NewServer(bridgeName),
+				resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
+				rename.NewServer(),
+			),
+			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+		}),
+		inject.NewServer(),
+		connectioncontextkernel.NewServer(),
 		connect.NewServer(ctx,
 			client.NewClientFactory(
 				client.WithName(name),
@@ -86,6 +100,7 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 					mechanismtranslation.NewClient(),
 					connectioncontextkernel.NewClient(),
 					inject.NewClient(),
+					rename.NewClient(),
 					// mechanisms
 					kernel.NewClient(bridgeName),
 					resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
@@ -98,18 +113,7 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
-		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
-			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
-				kernel.NewServer(bridgeName),
-				resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
-				rename.NewServer(),
-			),
-			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
-		}),
-		inject.NewServer(),
-		connectioncontextkernel.NewServer(),
 		l2ovsconnect.NewServer(bridgeName),
-		sendfd.NewServer(),
 	}
 
 	rv.Endpoint = endpoint.NewServer(ctx, tokenGenerator,
@@ -135,8 +139,21 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
 		recvfd.NewServer(),
+		sendfd.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
+		heal.NewServer(ctx,
+			heal.WithOnHeal(addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
+			heal.WithOnRestore(heal.OnRestoreIgnore)),
+		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
+			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
+				kernel.NewServer(bridgeName),
+				rename.NewServer(),
+			),
+			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+		}),
+		inject.NewServer(),
+		connectioncontextkernel.NewServer(),
 		connect.NewServer(ctx,
 			client.NewClientFactory(
 				client.WithName(name),
@@ -153,17 +170,7 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
-		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
-			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
-				kernel.NewServer(bridgeName),
-				rename.NewServer(),
-			),
-			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
-		}),
-		inject.NewServer(),
-		connectioncontextkernel.NewServer(),
 		l2ovsconnect.NewServer(bridgeName),
-		sendfd.NewServer(),
 	}
 
 	rv.Endpoint = endpoint.NewServer(ctx, tokenGenerator,
