@@ -26,7 +26,7 @@ import (
 )
 
 func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo,
-	clientOvsPortInfo ifnames.OvsPortInfo) error {
+	clientOvsPortInfo *ifnames.OvsPortInfo) error {
 	stdout, stderr, err := util.RunOVSOfctl("add-flow", bridgeName, fmt.Sprintf("priority=100, in_port=%d,"+
 		" actions=output:%d", endpointOvsPortInfo.PortNo, clientOvsPortInfo.PortNo))
 	if err != nil {
@@ -55,7 +55,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 }
 
 func deleteLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo,
-	clientOvsPortInfo ifnames.OvsPortInfo) error {
+	clientOvsPortInfo *ifnames.OvsPortInfo) error {
 	stdout, stderr, err := util.RunOVSOfctl("del-flows", bridgeName, fmt.Sprintf("in_port=%d",
 		endpointOvsPortInfo.PortNo))
 	if err != nil {

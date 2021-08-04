@@ -29,15 +29,16 @@ type key struct{}
 
 // OvsPortInfo ovs port info container
 type OvsPortInfo struct {
-	PortName        string
-	PortNo          int
-	IsTunnelPort    bool
-	IsVfRepresentor bool
-	VNI             uint32
+	PortName         string
+	PortNo           int
+	IsTunnelPort     bool
+	IsVfRepresentor  bool
+	IsCrossConnected bool
+	VNI              uint32
 }
 
 // Store stores ovsPortInfo for the given cross connect, isClient identfies which connection it is.
-func Store(ctx context.Context, isClient bool, ovsPortInfo OvsPortInfo) {
+func Store(ctx context.Context, isClient bool, ovsPortInfo *OvsPortInfo) {
 	metadata.Map(ctx, isClient).Store(key{}, ovsPortInfo)
 }
 
@@ -47,31 +48,31 @@ func Delete(ctx context.Context, isClient bool) {
 }
 
 // Load retrieves ovsPortInfo from cache for a given connection
-func Load(ctx context.Context, isClient bool) (value OvsPortInfo, ok bool) {
+func Load(ctx context.Context, isClient bool) (value *OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).Load(key{})
 	if !ok {
 		return
 	}
-	value, ok = rawValue.(OvsPortInfo)
+	value, ok = rawValue.(*OvsPortInfo)
 	return value, ok
 }
 
 // LoadOrStore retrievs ovsPortInfo from cache. If it doesn't exist, store it with given ovsPortInfo
-func LoadOrStore(ctx context.Context, isClient bool, ovsPortInfo OvsPortInfo) (value OvsPortInfo, ok bool) {
+func LoadOrStore(ctx context.Context, isClient bool, ovsPortInfo *OvsPortInfo) (value *OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).LoadOrStore(key{}, ovsPortInfo)
 	if !ok {
-		return
+		return ovsPortInfo, ok
 	}
-	value, ok = rawValue.(OvsPortInfo)
+	value, ok = rawValue.(*OvsPortInfo)
 	return value, ok
 }
 
 // LoadAndDelete retrievs ovsPortInfo from cache and also also delete it from the cache.
-func LoadAndDelete(ctx context.Context, isClient bool) (value OvsPortInfo, ok bool) {
+func LoadAndDelete(ctx context.Context, isClient bool) (value *OvsPortInfo, ok bool) {
 	rawValue, ok := metadata.Map(ctx, isClient).LoadAndDelete(key{})
 	if !ok {
 		return
 	}
-	value, ok = rawValue.(OvsPortInfo)
+	value, ok = rawValue.(*OvsPortInfo)
 	return value, ok
 }

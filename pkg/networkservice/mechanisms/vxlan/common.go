@@ -67,7 +67,7 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 		if err != nil {
 			return err
 		}
-		ifnames.Store(ctx, isClient, ifnames.OvsPortInfo{PortName: ovsTunnelName,
+		ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: ovsTunnelName,
 			PortNo: ovsTunnelPortNum, IsTunnelPort: true, VNI: mechanism.VNI()})
 	}
 	return nil

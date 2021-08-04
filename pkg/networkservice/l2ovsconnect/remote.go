@@ -25,7 +25,7 @@ import (
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
-func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo ifnames.OvsPortInfo) error {
+func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo *ifnames.OvsPortInfo) error {
 	var (
 		ovsLocalPortNum, ovsTunnelPortNum int
 		ovsLocalPort, ovsTunnelPort       string
@@ -74,7 +74,7 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	return nil
 }
 
-func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo ifnames.OvsPortInfo) error {
+func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo, clientOvsPortInfo *ifnames.OvsPortInfo) error {
 	var (
 		ovsLocalPortNum, ovsTunnelPortNum int
 		ovsLocalPort, ovsTunnelPort       string

@@ -65,7 +65,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 			" error: %v", hostIfName, err)
 		return err
 	}
-	ifnames.Store(ctx, isClient, ifnames.OvsPortInfo{PortName: hostIfName, PortNo: portNo, IsTunnelPort: false})
+	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: hostIfName, PortNo: portNo, IsTunnelPort: false})
 	return nil
 }
 

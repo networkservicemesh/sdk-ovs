@@ -83,11 +83,13 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 		vfconfig.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
+		heal.NewServer(ctx,
+			heal.WithOnHeal(addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
+			heal.WithOnRestore(heal.OnRestoreIgnore)),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
 				kernel.NewServer(bridgeName),
 				resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
-				rename.NewServer(),
 			),
 			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 		}),
@@ -98,9 +100,9 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 				client.WithName(name),
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
+					l2ovsconnect.NewClient(bridgeName),
 					connectioncontextkernel.NewClient(),
 					inject.NewClient(),
-					rename.NewClient(),
 					// mechanisms
 					kernel.NewClient(bridgeName),
 					resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig),
@@ -113,7 +115,6 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
-		l2ovsconnect.NewServer(bridgeName),
 	}
 
 	rv.Endpoint = endpoint.NewServer(ctx, tokenGenerator,
@@ -159,6 +160,7 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 				client.WithName(name),
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
+					l2ovsconnect.NewClient(bridgeName),
 					connectioncontextkernel.NewClient(),
 					inject.NewClient(),
 					// mechanisms
@@ -170,7 +172,6 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 			),
 			connect.WithDialOptions(clientDialOptions...),
 		),
-		l2ovsconnect.NewServer(bridgeName),
 	}
 
 	rv.Endpoint = endpoint.NewServer(ctx, tokenGenerator,

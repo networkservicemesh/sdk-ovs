@@ -25,38 +25,55 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
-type l2ConnectServer struct {
+type l2ConnectClient struct {
 	bridgeName string
 }
 
-// NewServer creates l2 connect server
-func NewServer(bridgeName string) networkservice.NetworkServiceServer {
-	return &l2ConnectServer{bridgeName}
+// NewClient creates l2 connect client
+func NewClient(bridgeName string) networkservice.NetworkServiceClient {
+	return &l2ConnectClient{bridgeName}
 }
 
-func (v *l2ConnectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	logger := log.FromContext(ctx).WithField("l2ConnectServer", "Request")
-	if err := addDel(ctx, logger, v.bridgeName, true); err != nil {
-		return nil, err
-	}
-	conn, err := next.Server(ctx).Request(ctx, request)
+func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Request")
+
+	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil {
-		_ = addDel(ctx, logger, v.bridgeName, false)
 		return nil, err
 	}
+
+	clientOvsPortInfo, ok := ifnames.Load(ctx, false)
+	if !ok || clientOvsPortInfo.IsCrossConnected {
+		return conn, nil
+	}
+
+	if err := addDel(ctx, logger, c.bridgeName, true); err != nil {
+		if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+		}
+		return nil, err
+	}
+	clientOvsPortInfo.IsCrossConnected = true
 	return conn, nil
 }
 
-func (v *l2ConnectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("l2ConnectServer", "Close")
-	if err := addDel(ctx, logger, v.bridgeName, false); err != nil {
+func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
+	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Close")
+	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
+	if err != nil {
 		return nil, err
 	}
-	return next.Server(ctx).Close(ctx, conn)
+	if err := addDel(ctx, logger, c.bridgeName, false); err != nil {
+		return nil, err
+	}
+	ifnames.Delete(ctx, true)
+	ifnames.Delete(ctx, false)
+	return rv, nil
 }
 
 func addDel(ctx context.Context, logger log.Logger, bridgeName string, addDel bool) error {

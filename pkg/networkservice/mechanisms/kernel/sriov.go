@@ -59,11 +59,11 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 			" error: %v", vfRepresentor, err)
 		return err
 	}
-	ifnames.Store(ctx, isClient, ifnames.OvsPortInfo{PortName: vfRepresentor, PortNo: portNo, IsVfRepresentor: true})
+	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: vfRepresentor, PortNo: portNo, IsVfRepresentor: true})
 	return nil
 }
 
-func resetVF(logger log.Logger, portInfo ifnames.OvsPortInfo, bridgeName string) error {
+func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, bridgeName string) error {
 	/* delete the port from ovs bridge */
 	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
 	if err != nil {
