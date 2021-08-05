@@ -31,7 +31,6 @@ import (
 	vxlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vxlan"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/inject"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/rename"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/vfconfig"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov"
@@ -149,7 +148,6 @@ func NewKernelServer(ctx context.Context, name string, authzServer networkservic
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
 				kernel.NewServer(bridgeName),
-				rename.NewServer(),
 			),
 			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 		}),

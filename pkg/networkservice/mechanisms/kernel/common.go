@@ -19,6 +19,7 @@ package kernel
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -81,6 +82,10 @@ func resetVeth(logger log.Logger, conn *networkservice.Connection, bridgeName st
 	/* Get a link object for the interface */
 	ifaceLink, err := netlink.LinkByName(ifaceName)
 	if err != nil {
+		if strings.Contains(err.Error(), "Link not found") {
+			// link is aleady deleted
+			return nil
+		}
 		return errors.Errorf("failed to get link for %q - %v", ifaceName, err)
 	}
 

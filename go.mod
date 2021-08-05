@@ -3,15 +3,15 @@ module github.com/networkservicemesh/sdk-ovs
 go 1.16
 
 require (
-	github.com/Mellanox/sriovnet v1.0.2
-	github.com/golang/protobuf v1.4.3
+	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
+	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.0.1-0.20210715134717-6e4a0f8eae3e
 	github.com/networkservicemesh/sdk v0.5.1-0.20210725184904-92b282404ca1
 	github.com/networkservicemesh/sdk-kernel v0.0.0-20210802032320-0b6bf83339f7
 	github.com/networkservicemesh/sdk-sriov v0.0.0-20210802032626-e07974262d2a
-	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210526211758-faa6b74b102b
+	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210805134717-4eed62af8e0e
 	github.com/pkg/errors v0.9.1
-	github.com/vishvananda/netlink v1.1.1-0.20201029203352-d40f9887b852
+	github.com/vishvananda/netlink v1.1.1-0.20210518155637-4cb3795f2ccb
 	google.golang.org/grpc v1.35.0
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 )
