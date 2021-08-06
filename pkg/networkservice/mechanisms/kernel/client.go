@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux
+
 // Package kernel implements client and server kernel mechanism chain element supports
 // both kernel and smartvf datapath
 package kernel
