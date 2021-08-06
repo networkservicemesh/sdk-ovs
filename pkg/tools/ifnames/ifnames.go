@@ -29,12 +29,11 @@ type key struct{}
 
 // OvsPortInfo ovs port info container
 type OvsPortInfo struct {
-	PortName         string
-	PortNo           int
-	IsTunnelPort     bool
-	IsVfRepresentor  bool
-	IsCrossConnected bool
-	VNI              uint32
+	PortName        string
+	PortNo          int
+	IsTunnelPort    bool
+	IsVfRepresentor bool
+	VNI             uint32
 }
 
 // Store stores ovsPortInfo for the given cross connect, isClient identfies which connection it is.

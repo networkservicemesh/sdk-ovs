@@ -44,24 +44,25 @@ func NewServer(bridgeName string) networkservice.NetworkServiceServer {
 // for service client container
 func (k *kernelServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelServer", "Request")
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
-	if !exists {
+	if !exists && !isEstablished {
 		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
 			_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 			return nil, err
 		}
 	}
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil && !exists {
+	if err != nil && !exists && !isEstablished {
 		_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 		return nil, err
 	}
-	if exists {
+	if exists && !isEstablished {
 		if err := setupVF(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
 			return nil, err
 		}
 	}
-	return conn, nil
+	return conn, err
 }
 
 func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {

@@ -52,8 +52,8 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 		Type: kernel.MECHANISM,
 	})
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
-	if err != nil {
-		return nil, err
+	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+		return conn, err
 	}
 	_, exists := conn.GetMechanism().GetParameters()[common.PCIAddressKey]
 	if exists {
