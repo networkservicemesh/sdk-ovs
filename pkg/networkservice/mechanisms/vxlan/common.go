@@ -77,7 +77,7 @@ func getTunnelPortName(remoteIP string) string {
 	return "v" + strings.ReplaceAll(remoteIP, ".", "")
 }
 
-func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesMutex sync.Locker,
+func remove(ctx context.Context, conn *networkservice.Connection, bridgeName string, vxlanInterfacesMutex sync.Locker,
 	vxlanRefCountMap map[string]int, isClient bool) error {
 	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		var remoteIP net.IP
@@ -97,6 +97,7 @@ func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesM
 		} else if count := vxlanRefCountMap[ovsTunnelName]; count > 1 {
 			vxlanRefCountMap[ovsTunnelName]--
 		}
+		ifnames.Delete(ctx, isClient)
 	}
 	return nil
 }

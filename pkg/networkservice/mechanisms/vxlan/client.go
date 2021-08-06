@@ -30,6 +30,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
@@ -56,11 +57,11 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 		Type: vxlan.MECHANISM,
 	})
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
-	if err != nil {
-		return nil, err
+	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+		return conn, err
 	}
 	if err = add(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		_ = remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+		_ = remove(ctx, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
 		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
@@ -69,12 +70,16 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 }
 
 func (c *vxlanClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
-	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
-	if err != nil {
-		return nil, err
+	_, err := next.Client(ctx).Close(ctx, conn, opts...)
+
+	vxlanClientErr := remove(ctx, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+
+	if err != nil && vxlanClientErr != nil {
+		return nil, errors.Wrap(err, vxlanClientErr.Error())
 	}
-	if err := remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		return nil, err
+	if vxlanClientErr != nil {
+		return nil, vxlanClientErr
 	}
-	return rv, nil
+
+	return &empty.Empty{}, err
 }

@@ -24,7 +24,9 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
@@ -57,16 +59,19 @@ func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.N
 
 func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Close")
-	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
-	if err != nil {
-		return nil, err
+	_, err := next.Client(ctx).Close(ctx, conn, opts...)
+
+	l2ConnectErr := addDel(ctx, logger, c.bridgeName, false)
+	ifnames.Delete(ctx, metadata.IsClient(c))
+
+	if err != nil && l2ConnectErr != nil {
+		return nil, errors.Wrap(err, l2ConnectErr.Error())
 	}
-	if err := addDel(ctx, logger, c.bridgeName, false); err != nil {
-		return nil, err
+	if l2ConnectErr != nil {
+		return nil, l2ConnectErr
 	}
-	ifnames.Delete(ctx, true)
-	ifnames.Delete(ctx, false)
-	return rv, nil
+
+	return &empty.Empty{}, err
 }
 
 func addDel(ctx context.Context, logger log.Logger, bridgeName string, addDel bool) error {

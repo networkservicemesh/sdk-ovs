@@ -27,6 +27,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
@@ -58,7 +59,7 @@ func (k *kernelServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 	if exists && !isEstablished {
-		if err := setupVF(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
+		if vfErr := setupVF(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); vfErr != nil {
 			return nil, err
 		}
 	}
@@ -67,18 +68,24 @@ func (k *kernelServer) Request(ctx context.Context, request *networkservice.Netw
 
 func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	logger := log.FromContext(ctx).WithField("kernelServer", "Close")
-	ovsPortInfo, exists := ifnames.Load(ctx, true)
+	_, err := next.Server(ctx).Close(ctx, conn)
+
+	var kernelServerErr error
+	ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			if err := resetVeth(logger, conn, k.bridgeName, metadata.IsClient(k)); err != nil {
-				return nil, err
-			}
+			kernelServerErr = resetVeth(logger, conn, k.bridgeName, metadata.IsClient(k))
 		} else {
-			if err := resetVF(logger, ovsPortInfo, k.bridgeName); err != nil {
-				return nil, err
-			}
+			kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
 		}
 	}
 
-	return next.Server(ctx).Close(ctx, conn)
+	if err != nil && kernelServerErr != nil {
+		return nil, errors.Wrap(err, kernelServerErr.Error())
+	}
+	if kernelServerErr != nil {
+		return nil, kernelServerErr
+	}
+
+	return &empty.Empty{}, err
 }

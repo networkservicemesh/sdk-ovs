@@ -31,6 +31,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
@@ -74,18 +75,24 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 
 func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Close")
-	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
-	if err != nil {
-		return nil, err
-	}
+	_, err := next.Client(ctx).Close(ctx, conn, opts...)
+
+	var kernelMechErr error
 	ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
-	if !exists {
-		return rv, nil
+	if exists {
+		if !ovsPortInfo.IsVfRepresentor {
+			kernelMechErr = resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c))
+		} else {
+			kernelMechErr = resetVF(logger, ovsPortInfo, c.bridgeName)
+		}
 	}
-	if !ovsPortInfo.IsVfRepresentor {
-		err = resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c))
-	} else {
-		err = resetVF(logger, ovsPortInfo, c.bridgeName)
+
+	if err != nil && kernelMechErr != nil {
+		return nil, errors.Wrap(err, kernelMechErr.Error())
 	}
-	return rv, err
+	if kernelMechErr != nil {
+		return nil, kernelMechErr
+	}
+
+	return &empty.Empty{}, err
 }

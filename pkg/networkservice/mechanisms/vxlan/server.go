@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
@@ -51,8 +52,8 @@ func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCo
 func (v *vxlanServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("vxlanServer", "Request")
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil {
-		return nil, err
+	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+		return conn, err
 	}
 
 	if err := add(ctx, logger, conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
@@ -68,8 +69,14 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 }
 
 func (v *vxlanServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	if err := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
-		return nil, err
+	_, err := next.Server(ctx).Close(ctx, conn)
+	vxlanServerErr := remove(ctx, conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false)
+
+	if err != nil && vxlanServerErr != nil {
+		return nil, errors.Wrap(err, vxlanServerErr.Error())
 	}
-	return next.Server(ctx).Close(ctx, conn)
+	if vxlanServerErr != nil {
+		return nil, vxlanServerErr
+	}
+	return &empty.Empty{}, err
 }
