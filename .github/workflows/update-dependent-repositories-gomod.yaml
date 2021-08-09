@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          - cmd-forwarder-ovs
+        - cmd-forwarder-ovs
     name: Update ${{ matrix.repository }}
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.actor == 'nsmbot' || github.event_name == 'push' }}
