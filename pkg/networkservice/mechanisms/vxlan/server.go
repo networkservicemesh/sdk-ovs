@@ -26,7 +26,10 @@ import (
 
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 
@@ -51,26 +54,28 @@ func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCo
 
 func (v *vxlanServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("vxlanServer", "Request")
+
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+
+	if !isEstablished {
+		if err := add(ctx, logger, request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v)); err != nil {
+			return nil, err
+		}
+	}
+
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+	if err != nil && !isEstablished {
+		_ = remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v))
 		return conn, err
 	}
 
-	if err := add(ctx, logger, conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
-		_, _ = v.Close(ctx, conn)
-		return nil, err
-	}
-
-	if err := add(ctx, logger, request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false); err != nil {
-		return nil, err
-	}
-
-	return conn, nil
+	return conn, err
 }
 
 func (v *vxlanServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	_, err := next.Server(ctx).Close(ctx, conn)
-	vxlanServerErr := remove(ctx, conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, false)
+	vxlanServerErr := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v))
+	ifnames.Delete(ctx, metadata.IsClient(v))
 
 	if err != nil && vxlanServerErr != nil {
 		return nil, errors.Wrap(err, vxlanServerErr.Error())

@@ -61,7 +61,7 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 		return conn, err
 	}
 	if err = add(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		_ = remove(ctx, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+		_ = remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
 		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
@@ -72,7 +72,7 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 func (c *vxlanClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	_, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	vxlanClientErr := remove(ctx, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+	vxlanClientErr := remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
 
 	if err != nil && vxlanClientErr != nil {
 		return nil, errors.Wrap(err, vxlanClientErr.Error())
