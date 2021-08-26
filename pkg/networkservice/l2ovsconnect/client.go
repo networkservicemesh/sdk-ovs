@@ -26,6 +26,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -48,8 +49,11 @@ func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.N
 		return conn, err
 	}
 
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
 	if err := addDel(ctx, logger, c.bridgeName, true); err != nil {
-		if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+		closeCtx, cancelClose := postponeCtxFunc()
+		defer cancelClose()
+		if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
 		return conn, err
