@@ -49,13 +49,13 @@ func (k *kernelServer) Request(ctx context.Context, request *networkservice.Netw
 	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
 	if !exists && !isEstablished {
 		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
-			_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
+			_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 			return nil, err
 		}
 	}
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil && !exists && !isEstablished {
-		_ = resetVeth(logger, request.Connection, k.bridgeName, metadata.IsClient(k))
+		_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 		return nil, err
 	}
 	if exists && !isEstablished {
@@ -74,7 +74,7 @@ func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connectio
 	ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			kernelServerErr = resetVeth(logger, conn, k.bridgeName, metadata.IsClient(k))
+			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, metadata.IsClient(k))
 		} else {
 			kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
 		}

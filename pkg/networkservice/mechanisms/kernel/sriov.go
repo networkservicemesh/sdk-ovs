@@ -20,6 +20,7 @@ package kernel
 
 import (
 	"context"
+	"errors"
 
 	"github.com/Mellanox/sriovnet"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -40,7 +41,11 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 	if _, ok := ifnames.Load(ctx, isClient); ok {
 		return nil
 	}
-	vfConfig := vfconfig.Config(ctx)
+
+	vfConfig, exists := vfconfig.Load(ctx, isClient)
+	if !exists {
+		return errors.New("vfconfig not found")
+	}
 	// get smart VF representor interface. This is a host net device which represents
 	// smart VF attached inside the container by device plugin. It can be considered
 	// as one end of veth pair whereas other end is smartVF. The VF representor would

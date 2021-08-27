@@ -92,7 +92,7 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 	ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
 	if exists {
 		if !ovsPortInfo.IsVfRepresentor {
-			kernelMechErr = resetVeth(logger, conn, c.bridgeName, metadata.IsClient(c))
+			kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c))
 		} else {
 			kernelMechErr = resetVF(logger, ovsPortInfo, c.bridgeName)
 		}
