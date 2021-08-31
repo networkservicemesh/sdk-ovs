@@ -32,6 +32,7 @@ import (
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vxlan"
 
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/vxlan/vni"
 )
@@ -74,14 +75,16 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 
 func (v *vxlanServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	_, err := next.Server(ctx).Close(ctx, conn)
-	vxlanServerErr := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v))
-	ifnames.Delete(ctx, metadata.IsClient(v))
+	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		vxlanServerErr := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v))
+		ifnames.Delete(ctx, metadata.IsClient(v))
 
-	if err != nil && vxlanServerErr != nil {
-		return nil, errors.Wrap(err, vxlanServerErr.Error())
-	}
-	if vxlanServerErr != nil {
-		return nil, vxlanServerErr
+		if err != nil && vxlanServerErr != nil {
+			return nil, errors.Wrap(err, vxlanServerErr.Error())
+		}
+		if vxlanServerErr != nil {
+			return nil, vxlanServerErr
+		}
 	}
 	return &empty.Empty{}, err
 }

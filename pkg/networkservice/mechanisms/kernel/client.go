@@ -88,21 +88,23 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 	logger := log.FromContext(ctx).WithField("kernelClient", "Close")
 	_, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	var kernelMechErr error
-	ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
-	if exists {
-		if !ovsPortInfo.IsVfRepresentor {
-			kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c))
-		} else {
-			kernelMechErr = resetVF(logger, ovsPortInfo, c.bridgeName)
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		var kernelMechErr error
+		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
+		if exists {
+			if !ovsPortInfo.IsVfRepresentor {
+				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c))
+			} else {
+				kernelMechErr = resetVF(logger, ovsPortInfo, c.bridgeName)
+			}
 		}
-	}
 
-	if err != nil && kernelMechErr != nil {
-		return nil, errors.Wrap(err, kernelMechErr.Error())
-	}
-	if kernelMechErr != nil {
-		return nil, kernelMechErr
+		if err != nil && kernelMechErr != nil {
+			return nil, errors.Wrap(err, kernelMechErr.Error())
+		}
+		if kernelMechErr != nil {
+			return nil, kernelMechErr
+		}
 	}
 
 	return &empty.Empty{}, err
