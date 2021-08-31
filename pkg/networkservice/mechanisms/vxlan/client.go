@@ -53,15 +53,19 @@ func NewClient(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCo
 
 func (c *vxlanClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("vxlanClient", "Request")
+
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
 		Cls:  cls.REMOTE,
 		Type: vxlan.MECHANISM,
 	})
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
 		return conn, err
 	}
-	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	if err = add(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
@@ -69,6 +73,7 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
 	}
+
 	return conn, err
 }
 

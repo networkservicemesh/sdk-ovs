@@ -49,15 +49,19 @@ func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 
 func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Request")
+
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
 		Cls:  cls.LOCAL,
 		Type: kernel.MECHANISM,
 	})
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
 		return conn, err
 	}
-	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	_, exists := conn.GetMechanism().GetParameters()[common.PCIAddressKey]
 	if exists {
 		if err = setupVF(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
@@ -76,6 +80,7 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 			}
 		}
 	}
+
 	return conn, err
 }
 

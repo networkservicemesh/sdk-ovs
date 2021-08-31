@@ -44,12 +44,14 @@ func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 
 func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Request")
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
 		return conn, err
 	}
 
-	postponeCtxFunc := postpone.ContextWithValues(ctx)
 	if err := addDel(ctx, logger, c.bridgeName, true); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
