@@ -31,6 +31,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -48,28 +49,38 @@ func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 
 func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Request")
+
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
 		Cls:  cls.LOCAL,
 		Type: kernel.MECHANISM,
 	})
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
 		return conn, err
 	}
+
 	_, exists := conn.GetMechanism().GetParameters()[common.PCIAddressKey]
 	if exists {
 		if err = setupVF(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
-			if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
 				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 			}
 		}
 	} else {
 		if err = setupVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
-			if _, closeErr := c.Close(ctx, conn, opts...); closeErr != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
 				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 			}
 		}
 	}
+
 	return conn, err
 }
 

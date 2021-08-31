@@ -30,6 +30,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
@@ -52,20 +53,27 @@ func NewClient(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCo
 
 func (c *vxlanClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("vxlanClient", "Request")
+
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
 		Cls:  cls.REMOTE,
 		Type: vxlan.MECHANISM,
 	})
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
 		return conn, err
 	}
+
 	if err = add(ctx, logger, conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true); err != nil {
-		_ = remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
-		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
+		closeCtx, cancelClose := postponeCtxFunc()
+		defer cancelClose()
+		if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
 	}
+
 	return conn, err
 }
 
