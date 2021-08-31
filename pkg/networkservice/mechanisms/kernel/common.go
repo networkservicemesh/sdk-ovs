@@ -55,11 +55,11 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	// use intermediate contIfName to avoid interface name collision with parallel service requests from other clients.
 	var hostIfName, contIfName string
 	if isClient {
-		hostIfName = GetInterfaceName(conn, ovsPortDstPrefix, true)
-		contIfName = GetInterfaceName(conn, contPortDstPrefix, true)
+		hostIfName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+		contIfName = GetVethPeerName(conn, contPortDstPrefix, true)
 	} else {
-		hostIfName = GetInterfaceName(conn, ovsPortSrcPrefix, false)
-		contIfName = GetInterfaceName(conn, contPortSrcPrefix, false)
+		hostIfName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+		contIfName = GetVethPeerName(conn, contPortSrcPrefix, false)
 	}
 
 	if err := createInterfaces(contIfName, hostIfName); err != nil {
@@ -90,9 +90,9 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
 	var ifaceName string
 	if isClient {
-		ifaceName = GetInterfaceName(conn, ovsPortDstPrefix, true)
+		ifaceName = GetVethPeerName(conn, ovsPortDstPrefix, true)
 	} else {
-		ifaceName = GetInterfaceName(conn, ovsPortSrcPrefix, false)
+		ifaceName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
 	}
 	/* delete the port from ovs bridge */
 	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
@@ -156,8 +156,8 @@ func newVETH(srcName, dstName string) *netlink.Veth {
 	}
 }
 
-// GetInterfaceName get appropriate interface name for the given connection.
-func GetInterfaceName(conn *networkservice.Connection, ifPrefix string, isClient bool) string {
+// GetVethPeerName get appropriate veth peer interface name for the given connection.
+func GetVethPeerName(conn *networkservice.Connection, ifPrefix string, isClient bool) string {
 	namingConn := conn.Clone()
 	namingConn.Id = namingConn.GetPrevPathSegment().GetId()
 	if isClient {
