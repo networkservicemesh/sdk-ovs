@@ -32,7 +32,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/inject"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
-	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/vfconfig"
+
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
@@ -90,7 +90,6 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 		metadata.NewServer(),
 		recvfd.NewServer(),
 		sendfd.NewServer(),
-		vfconfig.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
 		heal.NewServer(ctx,
@@ -116,8 +115,6 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					// mechanisms
 					kernel.NewClient(bridgeName),
 					resourcePoolClient,
-					// uncomment when vfconfig client chain element available
-					// vfconfig.NewClient(),
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 					recvfd.NewClient(),
 					sendfd.NewClient(),

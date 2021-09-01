@@ -25,6 +25,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/pkg/errors"
@@ -35,9 +36,11 @@ import (
 )
 
 const (
-	srcPrefix = "tapsrc"
-	dstPrefix = "tapdst"
-	cVETHMTU  = 16000
+	ovsPortSrcPrefix  = "tapsrc"
+	ovsPortDstPrefix  = "tapdst"
+	contPortSrcPrefix = "contsrc"
+	contPortDstPrefix = "contdst"
+	cVETHMTU          = 16000
 )
 
 func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
@@ -48,8 +51,17 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	if _, ok := ifnames.Load(ctx, isClient); ok {
 		return nil
 	}
-	contIfName := mechanism.GetInterfaceName()
-	hostIfName := GetOvsInterfaceName(conn, isClient)
+
+	// use intermediate contIfName to avoid interface name collision with parallel service requests from other clients.
+	var hostIfName, contIfName string
+	if isClient {
+		hostIfName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+		contIfName = GetVethPeerName(conn, contPortDstPrefix, true)
+	} else {
+		hostIfName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+		contIfName = GetVethPeerName(conn, contPortSrcPrefix, false)
+	}
+
 	if err := createInterfaces(contIfName, hostIfName); err != nil {
 		return err
 	}
@@ -68,12 +80,20 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 			" error: %v", hostIfName, err)
 		return err
 	}
+
+	vfconfig.Store(ctx, isClient, &vfconfig.VFConfig{VFInterfaceName: contIfName})
 	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: hostIfName, PortNo: portNo, IsTunnelPort: false})
+
 	return nil
 }
 
-func resetVeth(logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
-	ifaceName := GetOvsInterfaceName(conn, isClient)
+func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+	var ifaceName string
+	if isClient {
+		ifaceName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+	} else {
+		ifaceName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+	}
 	/* delete the port from ovs bridge */
 	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
 	if err != nil {
@@ -95,6 +115,7 @@ func resetVeth(logger log.Logger, conn *networkservice.Connection, bridgeName st
 	if err := netlink.LinkDel(ifaceLink); err != nil {
 		return errors.Errorf("local: failed to delete the VETH pair - %v", err)
 	}
+	vfconfig.Delete(ctx, isClient)
 	return nil
 }
 
@@ -135,16 +156,14 @@ func newVETH(srcName, dstName string) *netlink.Veth {
 	}
 }
 
-// GetOvsInterfaceName get ovs interface name for the given connection.
-func GetOvsInterfaceName(conn *networkservice.Connection, isClient bool) string {
+// GetVethPeerName get appropriate veth peer interface name for the given connection.
+func GetVethPeerName(conn *networkservice.Connection, ifPrefix string, isClient bool) string {
 	namingConn := conn.Clone()
-	prefix := srcPrefix
 	namingConn.Id = namingConn.GetPrevPathSegment().GetId()
 	if isClient {
-		prefix = dstPrefix
 		namingConn.Id = namingConn.GetNextPathSegment().GetId()
 	}
-	name := fmt.Sprintf("%s-%s", prefix, conn.GetId())
+	name := fmt.Sprintf("%s-%s", ifPrefix, conn.GetId())
 	if len(name) > kernel.LinuxIfMaxLength {
 		name = name[:kernel.LinuxIfMaxLength]
 	}
