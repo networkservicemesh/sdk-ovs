@@ -23,6 +23,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
@@ -70,21 +71,23 @@ func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connectio
 	logger := log.FromContext(ctx).WithField("kernelServer", "Close")
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	var kernelServerErr error
-	ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
-	if exists {
-		if !ovsPortInfo.IsVfRepresentor {
-			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, metadata.IsClient(k))
-		} else {
-			kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		var kernelServerErr error
+		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
+		if exists {
+			if !ovsPortInfo.IsVfRepresentor {
+				kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, metadata.IsClient(k))
+			} else {
+				kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
+			}
 		}
-	}
 
-	if err != nil && kernelServerErr != nil {
-		return nil, errors.Wrap(err, kernelServerErr.Error())
-	}
-	if kernelServerErr != nil {
-		return nil, kernelServerErr
+		if err != nil && kernelServerErr != nil {
+			return nil, errors.Wrap(err, kernelServerErr.Error())
+		}
+		if kernelServerErr != nil {
+			return nil, kernelServerErr
+		}
 	}
 
 	return &empty.Empty{}, err
