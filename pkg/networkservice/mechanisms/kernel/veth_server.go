@@ -24,7 +24,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -47,12 +46,6 @@ func NewVethServer(bridgeName string) networkservice.NetworkServiceServer {
 // for service client container
 func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelVethServer", "Request")
-
-	// TODO: remove exists check when switchcase chain element is used
-	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
-	if exists {
-		return next.Server(ctx).Request(ctx, request)
-	}
 
 	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	if !isEstablished {
@@ -81,10 +74,7 @@ func (k *kernelVethServer) Close(ctx context.Context, conn *networkservice.Conne
 	logger := log.FromContext(ctx).WithField("kernelVethServer", "Close")
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	// TODO: remove exists check when switchcase chain element is used
-	_, exists := conn.GetMechanism().GetParameters()[resourcepool.TokenIDKey]
-
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && !exists {
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		var kernelServerErr error
 		_, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 		if exists {

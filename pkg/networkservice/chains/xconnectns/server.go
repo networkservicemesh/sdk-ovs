@@ -32,6 +32,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/inject"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
+	sriovtokens "github.com/networkservicemesh/sdk-sriov/pkg/tools/tokens"
 
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov/config"
@@ -45,6 +46,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanismtranslation"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/null"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/switchcase"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/adapters"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
@@ -96,10 +98,20 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 			heal.WithOnHeal(addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
 			heal.WithOnRestore(heal.OnRestoreIgnore)),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
-			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
-				kernel.NewVethServer(bridgeName),
-				resourcePoolServer,
-				kernel.NewSmartVFServer(bridgeName),
+			kernelmech.MECHANISM: switchcase.NewServer(
+				&switchcase.ServerCase{
+					Condition: func(_ context.Context, conn *networkservice.Connection) bool {
+						return sriovtokens.IsTokenID(kernelmech.ToMechanism(conn.GetMechanism()).GetDeviceTokenID())
+					},
+					Server: chain.NewNetworkServiceServer(
+						resourcePoolServer,
+						kernel.NewSmartVFServer(bridgeName),
+					),
+				},
+				&switchcase.ServerCase{
+					Condition: switchcase.Default,
+					Server:    kernel.NewVethServer(bridgeName),
+				},
 			),
 			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 		}),
