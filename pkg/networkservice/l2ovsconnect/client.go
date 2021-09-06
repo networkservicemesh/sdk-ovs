@@ -47,8 +47,10 @@ func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.N
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
-	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+	if err != nil || isEstablished {
 		return conn, err
 	}
 
