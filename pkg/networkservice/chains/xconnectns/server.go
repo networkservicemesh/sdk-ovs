@@ -97,8 +97,9 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 			heal.WithOnRestore(heal.OnRestoreIgnore)),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 			kernelmech.MECHANISM: chain.NewNetworkServiceServer(
-				kernel.NewServer(bridgeName),
+				kernel.NewVethServer(bridgeName),
 				resourcePoolServer,
+				kernel.NewSmartVFServer(bridgeName),
 			),
 			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 		}),

@@ -28,60 +28,68 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
-type kernelServer struct {
+type kernelVethServer struct {
 	bridgeName string
 }
 
-// NewServer - return a new Server chain element implementing the kernel mechanism with veth pair or smartvf
-func NewServer(bridgeName string) networkservice.NetworkServiceServer {
-	return &kernelServer{bridgeName}
+// NewVethServer - return a new Veth Server chain element for kernel mechanism
+func NewVethServer(bridgeName string) networkservice.NetworkServiceServer {
+	return &kernelVethServer{bridgeName}
 }
 
-// NewClient create a kernel server chain element which would be useful to do network plumbing
+// NewClient create a kernel veth server chain element which would be useful to do network plumbing
 // for service client container
-func (k *kernelServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	logger := log.FromContext(ctx).WithField("kernelServer", "Request")
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+	logger := log.FromContext(ctx).WithField("kernelVethServer", "Request")
+
+	// TODO: remove exists check when switchcase chain element is used
 	_, exists := request.GetConnection().GetMechanism().GetParameters()[resourcepool.TokenIDKey]
-	if !exists && !isEstablished {
+	if exists {
+		return next.Server(ctx).Request(ctx, request)
+	}
+
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	if !isEstablished {
 		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
 			_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k))
 			return nil, err
 		}
 	}
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil && !exists && !isEstablished {
-		_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k))
+	if err != nil && !isEstablished {
+		closeCtx, cancelClose := postponeCtxFunc()
+		defer cancelClose()
+
+		if _, closeErr := k.Close(closeCtx, conn); closeErr != nil {
+			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		}
 		return nil, err
 	}
-	if exists && !isEstablished {
-		if vfErr := setupVF(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); vfErr != nil {
-			return nil, err
-		}
-	}
+
 	return conn, err
 }
 
-func (k *kernelServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("kernelServer", "Close")
+func (k *kernelVethServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+	logger := log.FromContext(ctx).WithField("kernelVethServer", "Close")
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		var kernelServerErr error
-		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
-		if exists {
-			if !ovsPortInfo.IsVfRepresentor {
-				kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, metadata.IsClient(k))
-			} else {
-				kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
-			}
-		}
+	// TODO: remove exists check when switchcase chain element is used
+	_, exists := conn.GetMechanism().GetParameters()[resourcepool.TokenIDKey]
 
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && !exists {
+		var kernelServerErr error
+		_, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
+		if exists {
+			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, metadata.IsClient(k))
+		}
 		if err != nil && kernelServerErr != nil {
 			return nil, errors.Wrap(err, kernelServerErr.Error())
 		}
