@@ -59,10 +59,12 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 		Type: vxlan.MECHANISM,
 	})
 
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
-	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+	if err != nil || isEstablished {
 		return conn, err
 	}
 

@@ -50,6 +50,8 @@ func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Request")
 
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
 		Cls:  cls.LOCAL,
 		Type: kernel.MECHANISM,
@@ -58,7 +60,7 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
-	if err != nil || request.GetConnection().GetNextPathSegment() != nil {
+	if err != nil || isEstablished {
 		return conn, err
 	}
 
