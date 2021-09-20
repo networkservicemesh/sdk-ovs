@@ -60,9 +60,10 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 	if err != nil && !isEstablished {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
-
-		if _, closeErr := k.Close(closeCtx, conn); closeErr != nil {
-			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		if ovsPortInfo, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
+			if kernelServerErr := resetVF(logger, ovsPortInfo, k.bridgeName); kernelServerErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
+			}
 		}
 		return nil, err
 	}

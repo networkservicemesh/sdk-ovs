@@ -60,9 +60,10 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 	if err != nil && !isEstablished {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
-
-		if _, closeErr := k.Close(closeCtx, conn); closeErr != nil {
-			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
+			if kernelServerErr := resetVeth(closeCtx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); kernelServerErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
+			}
 		}
 		return nil, err
 	}

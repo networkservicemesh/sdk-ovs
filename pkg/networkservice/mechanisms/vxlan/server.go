@@ -71,9 +71,10 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 	if err != nil && !isEstablished {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
-
-		if _, closeErr := v.Close(closeCtx, conn); closeErr != nil {
-			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(v)); exists {
+			if vxlanServerErr := remove(request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v)); vxlanServerErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", vxlanServerErr.Error())
+			}
 		}
 		return nil, err
 	}
