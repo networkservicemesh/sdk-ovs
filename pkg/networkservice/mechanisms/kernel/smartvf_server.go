@@ -47,7 +47,7 @@ func NewSmartVFServer(bridgeName string) networkservice.NetworkServiceServer {
 func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelSmartVFServer", "Request")
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(k))
 	if !isEstablished {
 		if vfErr := setupVF(ctx, logger, request.GetConnection(), k.bridgeName, metadata.IsClient(k)); vfErr != nil {
 			return nil, vfErr

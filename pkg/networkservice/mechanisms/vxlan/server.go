@@ -57,7 +57,7 @@ func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCo
 func (v *vxlanServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("vxlanServer", "Request")
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(v))
 
 	if !isEstablished {
 		if err := add(ctx, logger, request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v)); err != nil {
