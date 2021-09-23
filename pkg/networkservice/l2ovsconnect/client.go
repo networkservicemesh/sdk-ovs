@@ -47,7 +47,10 @@ func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.N
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	var isEstablished bool
+	if endpointOvsPortInfo, exists := ifnames.Load(ctx, false); exists {
+		isEstablished = endpointOvsPortInfo.IsCrossConnected
+	}
 
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil || isEstablished {

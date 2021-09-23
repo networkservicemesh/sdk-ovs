@@ -71,6 +71,9 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 			" stderr: %s", bridgeName, ovsTunnelPort, stdout, stderr)
 	}
 
+	endpointOvsPortInfo.IsCrossConnected = true
+	clientOvsPortInfo.IsCrossConnected = true
+
 	return nil
 }
 

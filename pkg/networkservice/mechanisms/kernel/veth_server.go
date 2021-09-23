@@ -47,10 +47,10 @@ func NewVethServer(bridgeName string) networkservice.NetworkServiceServer {
 func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelVethServer", "Request")
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(k))
 	if !isEstablished {
-		if err := setupVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k)); err != nil {
-			_ = resetVeth(ctx, logger, request.Connection, k.bridgeName, metadata.IsClient(k))
+		if err := setupVeth(ctx, logger, request.GetConnection(), k.bridgeName, metadata.IsClient(k)); err != nil {
+			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, metadata.IsClient(k))
 			return nil, err
 		}
 	}
@@ -60,9 +60,10 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 	if err != nil && !isEstablished {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
-
-		if _, closeErr := k.Close(closeCtx, conn); closeErr != nil {
-			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
+			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, metadata.IsClient(k)); kernelServerErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
+			}
 		}
 		return nil, err
 	}

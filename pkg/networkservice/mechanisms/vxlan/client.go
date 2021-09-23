@@ -29,10 +29,13 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/vxlan/vni"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
 type vxlanClient struct {
@@ -59,7 +62,7 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 		Type: vxlan.MECHANISM,
 	})
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(c))
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 

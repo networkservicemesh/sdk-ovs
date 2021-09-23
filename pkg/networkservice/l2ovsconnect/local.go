@@ -51,6 +51,10 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s", bridgeName, clientOvsPortInfo.PortName, stdout, stderr)
 	}
+
+	endpointOvsPortInfo.IsCrossConnected = true
+	clientOvsPortInfo.IsCrossConnected = true
+
 	return nil
 }
 
