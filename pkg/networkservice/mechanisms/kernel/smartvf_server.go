@@ -20,6 +20,7 @@ package kernel
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -34,12 +35,14 @@ import (
 )
 
 type kernelSmartVFServer struct {
-	bridgeName string
+	bridgeName          string
+	parentIfmutex       sync.Locker
+	parentIfRefCountMap map[string]int
 }
 
 // NewSmartVFServer - return a new Smart VF Server chain element for kernel mechanism
-func NewSmartVFServer(bridgeName string) networkservice.NetworkServiceServer {
-	return &kernelSmartVFServer{bridgeName}
+func NewSmartVFServer(bridgeName string, mutex sync.Locker, parentIfRefCountMap map[string]int) networkservice.NetworkServiceServer {
+	return &kernelSmartVFServer{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap}
 }
 
 // NewClient create a kernel Smart VF server chain element which would be useful to do network plumbing
@@ -48,8 +51,10 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 	logger := log.FromContext(ctx).WithField("kernelSmartVFServer", "Request")
 
 	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(k))
+	k.parentIfmutex.Lock()
+	defer k.parentIfmutex.Unlock()
 	if !isEstablished {
-		if vfErr := setupVF(ctx, logger, request.GetConnection(), k.bridgeName, metadata.IsClient(k)); vfErr != nil {
+		if vfErr := setupVF(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); vfErr != nil {
 			return nil, vfErr
 		}
 	}
@@ -61,7 +66,7 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 		if ovsPortInfo, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
-			if kernelServerErr := resetVF(logger, ovsPortInfo, k.bridgeName); kernelServerErr != nil {
+			if kernelServerErr := resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
 		}
@@ -76,10 +81,12 @@ func (k *kernelSmartVFServer) Close(ctx context.Context, conn *networkservice.Co
 	_, err := next.Server(ctx).Close(ctx, conn)
 
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		k.parentIfmutex.Lock()
+		defer k.parentIfmutex.Unlock()
 		var kernelServerErr error
 		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 		if exists {
-			kernelServerErr = resetVF(logger, ovsPortInfo, k.bridgeName)
+			kernelServerErr = resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName)
 		}
 
 		if err != nil && kernelServerErr != nil {

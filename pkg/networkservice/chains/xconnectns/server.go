@@ -82,6 +82,10 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 		return nil, err
 	}
 	utils.ConfigureOvS(ctx, bridgeName)
+
+	parentIfMutex := &sync.Mutex{}
+	parentIfRefCount := make(map[string]int)
+
 	vxlanInterfacesMutex := &sync.Mutex{}
 	vxlanInterfaces := make(map[string]int)
 	rv := &ovsConnectNSServer{}
@@ -99,12 +103,12 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					},
 					Server: chain.NewNetworkServiceServer(
 						resourcePoolServer,
-						kernel.NewSmartVFServer(bridgeName),
+						kernel.NewSmartVFServer(bridgeName, parentIfMutex, parentIfRefCount),
 					),
 				},
 				&switchcase.ServerCase{
 					Condition: switchcase.Default,
-					Server:    kernel.NewVethServer(bridgeName),
+					Server:    kernel.NewVethServer(bridgeName, parentIfMutex, parentIfRefCount),
 				},
 			),
 			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
@@ -122,7 +126,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					connectioncontextkernel.NewClient(),
 					inject.NewClient(),
 					// mechanisms
-					kernel.NewClient(bridgeName),
+					kernel.NewClient(bridgeName, parentIfMutex, parentIfRefCount),
 					resourcePoolClient,
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
 					recvfd.NewClient(),

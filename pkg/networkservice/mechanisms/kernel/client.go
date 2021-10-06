@@ -22,6 +22,8 @@ package kernel
 
 import (
 	"context"
+	"strconv"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -39,22 +41,27 @@ import (
 )
 
 type kernelClient struct {
-	bridgeName string
+	bridgeName          string
+	parentIfmutex       sync.Locker
+	parentIfRefCountMap map[string]int
 }
 
 // NewClient returns a client chain element implementing kernel mechanism with veth pair or smartvf
-func NewClient(bridgeName string) networkservice.NetworkServiceClient {
-	return &kernelClient{bridgeName}
+func NewClient(bridgeName string, mutex sync.Locker, parentIfRefCountMap map[string]int) networkservice.NetworkServiceClient {
+	return &kernelClient{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap}
 }
 
 func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Request")
 
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(c))
 
+	mechParameters := make(map[string]string)
+	mechParameters[kernel.SupportsVLAN] = strconv.FormatBool(true)
 	request.MechanismPreferences = append(request.MechanismPreferences, &networkservice.Mechanism{
-		Cls:  cls.LOCAL,
-		Type: kernel.MECHANISM,
+		Cls:        cls.LOCAL,
+		Type:       kernel.MECHANISM,
+		Parameters: mechParameters,
 	})
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
@@ -64,9 +71,11 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 		return conn, err
 	}
 
+	c.parentIfmutex.Lock()
+	defer c.parentIfmutex.Unlock()
 	_, exists := conn.GetMechanism().GetParameters()[common.PCIAddressKey]
 	if exists {
-		if err = setupVF(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
+		if err = setupVF(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, metadata.IsClient(c)); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
@@ -74,7 +83,7 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 			}
 		}
 	} else {
-		if err = setupVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c)); err != nil {
+		if err = setupVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, metadata.IsClient(c)); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
@@ -91,13 +100,15 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 	_, err := next.Client(ctx).Close(ctx, conn, opts...)
 
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		c.parentIfmutex.Lock()
+		defer c.parentIfmutex.Unlock()
 		var kernelMechErr error
 		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
 		if exists {
 			if !ovsPortInfo.IsVfRepresentor {
-				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, metadata.IsClient(c))
+				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, metadata.IsClient(c))
 			} else {
-				kernelMechErr = resetVF(logger, ovsPortInfo, c.bridgeName)
+				kernelMechErr = resetVF(logger, ovsPortInfo, c.parentIfRefCountMap, c.bridgeName)
 			}
 		}
 
