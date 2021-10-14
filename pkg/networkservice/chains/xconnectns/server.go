@@ -40,17 +40,14 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/endpoint"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clienturl"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/connect"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/recvfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanismtranslation"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/null"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/switchcase"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/adapters"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
-	"github.com/networkservicemesh/sdk/pkg/tools/addressof"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
 	"google.golang.org/grpc"
 
@@ -94,9 +91,6 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 		sendfd.NewServer(),
 		// Statically set the url we use to the unix file socket for the NSMgr
 		clienturl.NewServer(clientURL),
-		heal.NewServer(ctx,
-			heal.WithOnHeal(addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
-			heal.WithOnRestore(heal.OnRestoreIgnore)),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 			kernelmech.MECHANISM: switchcase.NewServer(
 				&switchcase.ServerCase{
@@ -117,9 +111,11 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 		}),
 		inject.NewServer(),
 		connectioncontextkernel.NewServer(),
-		connect.NewServer(ctx,
-			client.NewClientFactory(
+		connect.NewServer(
+			client.NewClient(ctx,
+				client.WithoutRefresh(),
 				client.WithName(name),
+				client.WithDialOptions(clientDialOptions...),
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
 					l2ovsconnect.NewClient(bridgeName),
@@ -133,7 +129,6 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					sendfd.NewClient(),
 				),
 			),
-			connect.WithDialOptions(clientDialOptions...),
 		),
 	}
 
