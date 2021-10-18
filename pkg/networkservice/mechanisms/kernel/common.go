@@ -43,7 +43,8 @@ const (
 	cVETHMTU          = 16000
 )
 
-func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
+	parentIfRefCountMap map[string]int, isClient bool) error {
 	var mechanism *kernel.Mechanism
 	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
 		return nil
@@ -68,12 +69,18 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	if err := SetInterfacesUp(logger, contIfName, hostIfName); err != nil {
 		return err
 	}
-	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, hostIfName)
-	if err != nil {
-		logger.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
-			" error: %v", hostIfName, bridgeName, stdout, stderr, err)
-		return err
+
+	if _, exists := parentIfRefCountMap[hostIfName]; !exists {
+		stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, hostIfName)
+		if err != nil {
+			logger.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
+				" error: %v", hostIfName, bridgeName, stdout, stderr, err)
+			return err
+		}
+		parentIfRefCountMap[hostIfName] = 0
 	}
+	parentIfRefCountMap[hostIfName]++
+
 	portNo, err := ovsutil.GetInterfaceOfPort(logger, hostIfName)
 	if err != nil {
 		logger.Errorf("Failed to get OVS port number for %s interface,"+
@@ -82,39 +89,54 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	}
 
 	vfconfig.Store(ctx, isClient, &vfconfig.VFConfig{VFInterfaceName: contIfName})
-	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: hostIfName, PortNo: portNo, IsTunnelPort: false})
+	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: hostIfName, PortNo: portNo,
+		VlanID: mechanism.GetVLAN(), IsTunnelPort: false})
 
 	return nil
 }
 
-func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
+	parentIfRefCountMap map[string]int, isClient bool) error {
 	var ifaceName string
 	if isClient {
 		ifaceName = GetVethPeerName(conn, ovsPortDstPrefix, true)
 	} else {
 		ifaceName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
 	}
-	/* delete the port from ovs bridge */
-	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
-	if err != nil {
-		logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
-			" error: %v", ifaceName, bridgeName, stdout, stderr, err)
-	}
 
-	/* Get a link object for the interface */
-	ifaceLink, err := netlink.LinkByName(ifaceName)
-	if err != nil {
-		if strings.Contains(err.Error(), "Link not found") {
-			// link is aleady deleted
-			return nil
+	var refCount int
+	if count, exists := parentIfRefCountMap[ifaceName]; exists {
+		if count > 0 {
+			refCount = count - 1
+			parentIfRefCountMap[ifaceName] = refCount
 		}
-		return errors.Errorf("failed to get link for %q - %v", ifaceName, err)
 	}
 
-	/* Delete the VETH pair - host namespace */
-	if err := netlink.LinkDel(ifaceLink); err != nil {
-		return errors.Errorf("local: failed to delete the VETH pair - %v", err)
+	if refCount == 0 {
+		/* delete the port from ovs bridge */
+		stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
+		if err != nil {
+			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
+				" error: %v", ifaceName, bridgeName, stdout, stderr, err)
+		}
+
+		/* Get a link object for the interface */
+		ifaceLink, err := netlink.LinkByName(ifaceName)
+		if err != nil {
+			if strings.Contains(err.Error(), "Link not found") {
+				// link is aleady deleted
+				return nil
+			}
+			return errors.Errorf("failed to get link for %q - %v", ifaceName, err)
+		}
+
+		/* Delete the VETH pair - host namespace */
+		if err := netlink.LinkDel(ifaceLink); err != nil {
+			return errors.Errorf("local: failed to delete the VETH pair - %v", err)
+		}
+		delete(parentIfRefCountMap, ifaceName)
 	}
+
 	vfconfig.Delete(ctx, isClient)
 	return nil
 }

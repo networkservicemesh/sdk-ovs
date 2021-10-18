@@ -31,6 +31,7 @@ type key struct{}
 type OvsPortInfo struct {
 	PortName         string
 	PortNo           int
+	VlanID           uint32
 	IsTunnelPort     bool
 	IsVfRepresentor  bool
 	IsCrossConnected bool

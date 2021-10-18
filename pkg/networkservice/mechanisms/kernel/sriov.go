@@ -33,7 +33,8 @@ import (
 	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
-func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, isClient bool) error {
+func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
+	parentIfRefCount map[string]int, isClient bool) error {
 	var mechanism *kernel.Mechanism
 	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
 		return nil
@@ -54,29 +55,46 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 	if err != nil {
 		return err
 	}
-	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
-	if err != nil {
-		logger.Errorf("Failed to add representor port %s to %s, stdout: %q, stderr: %q,"+
-			" error: %v", vfRepresentor, bridgeName, stdout, stderr, err)
-		return err
+	if _, exists := parentIfRefCount[vfRepresentor]; !exists {
+		stdout, stderr, err1 := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
+		if err1 != nil {
+			logger.Errorf("Failed to add representor port %s to %s, stdout: %q, stderr: %q,"+
+				" error: %v", vfRepresentor, bridgeName, stdout, stderr, err1)
+			return err1
+		}
+		parentIfRefCount[vfRepresentor] = 0
 	}
+	parentIfRefCount[vfRepresentor]++
 	portNo, err := ovsutil.GetInterfaceOfPort(logger, vfRepresentor)
 	if err != nil {
 		logger.Errorf("Failed to get OVS port number for %s interface,"+
 			" error: %v", vfRepresentor, err)
 		return err
 	}
-	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: vfRepresentor, PortNo: portNo, IsVfRepresentor: true})
+
+	ifnames.Store(ctx, isClient, &ifnames.OvsPortInfo{PortName: vfRepresentor, PortNo: portNo,
+		VlanID: mechanism.GetVLAN(), IsVfRepresentor: true})
 	return nil
 }
 
-func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, bridgeName string) error {
+func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountMap map[string]int, bridgeName string) error {
 	/* delete the port from ovs bridge */
-	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
-	if err != nil {
-		logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
-			" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
-		return err
+	var refCount int
+	if count, exists := parentIfRefCountMap[portInfo.PortName]; exists {
+		if count > 0 {
+			refCount = count - 1
+			parentIfRefCountMap[portInfo.PortName] = refCount
+		}
 	}
+	if refCount == 0 {
+		stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
+		if err != nil {
+			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
+				" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
+			return err
+		}
+		delete(parentIfRefCountMap, portInfo.PortName)
+	}
+
 	return nil
 }
