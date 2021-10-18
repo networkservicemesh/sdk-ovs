@@ -41,7 +41,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 		ofRuleToEndpoint = fmt.Sprintf("priority=100, in_port=%d,"+
 			" actions=output:%d", clientOvsPortInfo.PortNo, endpointOvsPortInfo.PortNo)
 	}
-	stdout, stderr, err := util.RunOVSOfctl("add-flow", ofRuleToClient)
+	stdout, stderr, err := util.RunOVSOfctl("add-flow", bridgeName, ofRuleToClient)
 	if err != nil {
 		logger.Infof("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
