@@ -51,12 +51,14 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 	logger := log.FromContext(ctx).WithField("kernelSmartVFServer", "Request")
 
 	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(k))
-	k.parentIfmutex.Lock()
-	defer k.parentIfmutex.Unlock()
+
 	if !isEstablished {
+		k.parentIfmutex.Lock()
 		if vfErr := setupVF(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); vfErr != nil {
+			k.parentIfmutex.Unlock()
 			return nil, vfErr
 		}
+		k.parentIfmutex.Unlock()
 	}
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
@@ -66,9 +68,11 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 		if ovsPortInfo, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
+			k.parentIfmutex.Lock()
 			if kernelServerErr := resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
+			k.parentIfmutex.Unlock()
 		}
 		return nil, err
 	}

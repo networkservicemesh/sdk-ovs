@@ -51,13 +51,15 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 	logger := log.FromContext(ctx).WithField("kernelVethServer", "Request")
 
 	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(k))
-	k.parentIfmutex.Lock()
-	defer k.parentIfmutex.Unlock()
+
 	if !isEstablished {
+		k.parentIfmutex.Lock()
 		if err := setupVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); err != nil {
 			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k))
+			k.parentIfmutex.Unlock()
 			return nil, err
 		}
+		k.parentIfmutex.Unlock()
 	}
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
@@ -66,9 +68,11 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
+			k.parentIfmutex.Lock()
 			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
+			k.parentIfmutex.Unlock()
 		}
 		return nil, err
 	}
