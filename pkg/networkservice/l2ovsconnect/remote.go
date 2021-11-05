@@ -48,16 +48,16 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 
 	var ofRuleFrom, ofRuleTo string
 	if vlanID > 0 {
-		ofRuleFrom = fmt.Sprintf("priority=100, in_port=%d,dl_vlan=%d actions=strip_vlan,set_field:%d->tun_id,output:%d",
+		ofRuleFrom = fmt.Sprintf("priority=100,in_port=%d,dl_vlan=%d,actions=strip_vlan,set_field:%d->tun_id,output:%d",
 			ovsLocalPortNum, vlanID, vni, ovsTunnelPortNum)
-		ofRuleTo = fmt.Sprintf("priority=100, in_port=%d,tun_id=%d,actions=push_vlan:0x8100,set_field:%d->vlan_vid,output:%d",
-			ovsTunnelPortNum, vni, vlanID, ovsLocalPortNum)
+		ofRuleTo = fmt.Sprintf("priority=100,in_port=%d,tun_id=%d,actions=push_vlan:0x8100,set_field:%d->vlan_vid,output:%d",
+			ovsTunnelPortNum, vni, vlanID+4096, ovsLocalPortNum)
 	} else {
-		ofRuleFrom = fmt.Sprintf("priority=100, in_port=%d, actions=set_field:%d->tun_id,output:%d",
+		ofRuleFrom = fmt.Sprintf("priority=100,in_port=%d,actions=set_field:%d->tun_id,output:%d",
 			ovsLocalPortNum, vni, ovsTunnelPortNum)
-		ofRuleTo = fmt.Sprintf("priority=100, in_port=%d,tun_id=%d,actions=output:%d", ovsTunnelPortNum, vni, ovsLocalPortNum)
+		ofRuleTo = fmt.Sprintf("priority=100,in_port=%d,tun_id=%d,actions=output:%d", ovsTunnelPortNum, vni, ovsLocalPortNum)
 	}
-	stdout, stderr, err := util.RunOVSOfctl("add-flow", bridgeName, ofRuleFrom)
+	stdout, stderr, err := util.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleFrom)
 	if err != nil {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, ovsLocalPort, stdout, stderr, err)
@@ -68,7 +68,7 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 			" stderr: %s", bridgeName, ovsLocalPort, stdout, stderr)
 	}
 
-	stdout, stderr, err = util.RunOVSOfctl("add-flow", bridgeName, ofRuleTo)
+	stdout, stderr, err = util.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleTo)
 	if err != nil {
 		logger.Errorf("Failed to add tunnel flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, ovsTunnelPort, stdout, stderr, err)
@@ -112,14 +112,14 @@ func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	} else {
 		ofMatch = fmt.Sprintf("in_port=%d", ovsLocalPortNum)
 	}
-	stdout, stderr, err := util.RunOVSOfctl("del-flows", bridgeName, ofMatch)
+	stdout, stderr, err := util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, ofMatch)
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, ovsLocalPort, stdout, stderr, err)
 		return err
 	}
 
-	stdout, stderr, err = util.RunOVSOfctl("del-flows", bridgeName, fmt.Sprintf("in_port=%d,tun_id=%d", ovsTunnelPortNum, vni))
+	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d,tun_id=%d", ovsTunnelPortNum, vni))
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s on VNI %d, stdout: %q, stderr: %q, error: %v", bridgeName, ovsTunnelPort, vni, stdout, stderr, err)
