@@ -35,14 +35,16 @@ import (
 )
 
 type kernelVethServer struct {
-	bridgeName          string
-	parentIfmutex       sync.Locker
-	parentIfRefCountMap map[string]int
+	bridgeName           string
+	parentIfmutex        sync.Locker
+	parentIfRefCountMap  map[string]int
+	serviceToparentIfMap map[string]string
 }
 
 // NewVethServer - return a new Veth Server chain element for kernel mechanism
 func NewVethServer(bridgeName string, mutex sync.Locker, parentIfRefCountMap map[string]int) networkservice.NetworkServiceServer {
-	return &kernelVethServer{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap}
+	return &kernelVethServer{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap,
+		serviceToparentIfMap: make(map[string]string)}
 }
 
 // NewClient create a kernel veth server chain element which would be useful to do network plumbing
@@ -54,8 +56,8 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 
 	if !isEstablished {
 		k.parentIfmutex.Lock()
-		if err := setupVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); err != nil {
-			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k))
+		if err := setupVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k)); err != nil {
+			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k))
 			k.parentIfmutex.Unlock()
 			return nil, err
 		}
@@ -69,7 +71,7 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 		defer cancelClose()
 		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
 			k.parentIfmutex.Lock()
-			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k)); kernelServerErr != nil {
+			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k)); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
 			k.parentIfmutex.Unlock()
@@ -90,7 +92,7 @@ func (k *kernelVethServer) Close(ctx context.Context, conn *networkservice.Conne
 		var kernelServerErr error
 		_, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 		if exists {
-			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, k.parentIfRefCountMap, metadata.IsClient(k))
+			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k))
 		}
 		if err != nil && kernelServerErr != nil {
 			return nil, errors.Wrap(err, kernelServerErr.Error())

@@ -41,14 +41,16 @@ import (
 )
 
 type kernelClient struct {
-	bridgeName          string
-	parentIfmutex       sync.Locker
-	parentIfRefCountMap map[string]int
+	bridgeName           string
+	parentIfmutex        sync.Locker
+	parentIfRefCountMap  map[string]int
+	serviceToparentIfMap map[string]string
 }
 
 // NewClient returns a client chain element implementing kernel mechanism with veth pair or smartvf
 func NewClient(bridgeName string, mutex sync.Locker, parentIfRefCountMap map[string]int) networkservice.NetworkServiceClient {
-	return &kernelClient{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap}
+	return &kernelClient{bridgeName: bridgeName, parentIfmutex: mutex, parentIfRefCountMap: parentIfRefCountMap,
+		serviceToparentIfMap: make(map[string]string)}
 }
 
 func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
@@ -83,7 +85,7 @@ func (c *kernelClient) Request(ctx context.Context, request *networkservice.Netw
 			}
 		}
 	} else {
-		if err = setupVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, metadata.IsClient(c)); err != nil {
+		if err = setupVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, metadata.IsClient(c)); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
@@ -106,7 +108,7 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
 		if exists {
 			if !ovsPortInfo.IsVfRepresentor {
-				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, metadata.IsClient(c))
+				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, metadata.IsClient(c))
 			} else {
 				kernelMechErr = resetVF(logger, ovsPortInfo, c.parentIfRefCountMap, c.bridgeName)
 			}

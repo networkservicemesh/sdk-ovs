@@ -44,7 +44,7 @@ const (
 )
 
 func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
-	parentIfRefCountMap map[string]int, isClient bool) error {
+	parentIfRefCountMap map[string]int, serviceToparentIfMap map[string]string, isClient bool) error {
 	var mechanism *kernel.Mechanism
 	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
 		return nil
@@ -53,21 +53,34 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 		return nil
 	}
 
-	// use intermediate contIfName to avoid interface name collision with parallel service requests from other clients.
+	serviceName := conn.GetNetworkService()
+
 	var hostIfName, contIfName string
-	if isClient {
-		hostIfName = GetVethPeerName(conn, ovsPortDstPrefix, true)
-		contIfName = GetVethPeerName(conn, contPortDstPrefix, true)
-	} else {
-		hostIfName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
-		contIfName = GetVethPeerName(conn, contPortSrcPrefix, false)
+	if mechanism.GetVLAN() > 0 {
+		if parentIfName, exists := serviceToparentIfMap[serviceName]; exists {
+			hostIfName = parentIfName
+		}
 	}
 
-	if err := createInterfaces(contIfName, hostIfName); err != nil {
-		return err
-	}
-	if err := SetInterfacesUp(logger, contIfName, hostIfName); err != nil {
-		return err
+	// use intermediate contIfName to avoid interface name collision with parallel service requests from other clients.
+	if hostIfName == "" {
+		if isClient {
+			hostIfName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+			contIfName = GetVethPeerName(conn, contPortDstPrefix, true)
+		} else {
+			hostIfName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+			contIfName = GetVethPeerName(conn, contPortSrcPrefix, false)
+		}
+
+		if err := createInterfaces(contIfName, hostIfName); err != nil {
+			return err
+		}
+		if err := SetInterfacesUp(logger, contIfName, hostIfName); err != nil {
+			return err
+		}
+		if mechanism.GetVLAN() > 0 {
+			serviceToparentIfMap[serviceName] = hostIfName
+		}
 	}
 
 	if _, exists := parentIfRefCountMap[hostIfName]; !exists {
@@ -96,12 +109,27 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 }
 
 func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
-	parentIfRefCountMap map[string]int, isClient bool) error {
+	parentIfRefCountMap map[string]int, serviceToparentIfMap map[string]string, isClient bool) error {
+	var mechanism *kernel.Mechanism
+	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
+		return nil
+	}
+
+	serviceName := conn.GetNetworkService()
+
 	var ifaceName string
-	if isClient {
-		ifaceName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+	if mechanism.GetVLAN() > 0 {
+		if parentIfName, exists := serviceToparentIfMap[serviceName]; exists {
+			ifaceName = parentIfName
+		} else {
+			return errors.Errorf("parent interface not found for connection %v", conn)
+		}
 	} else {
-		ifaceName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+		if isClient {
+			ifaceName = GetVethPeerName(conn, ovsPortDstPrefix, true)
+		} else {
+			ifaceName = GetVethPeerName(conn, ovsPortSrcPrefix, false)
+		}
 	}
 
 	var refCount int
@@ -135,6 +163,7 @@ func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 			return errors.Errorf("local: failed to delete the VETH pair - %v", err)
 		}
 		delete(parentIfRefCountMap, ifaceName)
+		delete(serviceToparentIfMap, serviceName)
 	}
 
 	vfconfig.Delete(ctx, isClient)
