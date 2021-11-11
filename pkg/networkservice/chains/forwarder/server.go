@@ -16,15 +16,16 @@
 
 // +build linux
 
-// Package xconnectns provides interpose endpoint implementation for ovs forwarder
+// Package forwarder provides interpose endpoint implementation for ovs forwarder
 // which provides kernel and smartnic endpoints
-package xconnectns
+package forwarder
 
 import (
 	"context"
 	"net"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -33,18 +34,22 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/inject"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/resourcepool"
 	sriovtokens "github.com/networkservicemesh/sdk-sriov/pkg/tools/tokens"
+	registryclient "github.com/networkservicemesh/sdk/pkg/registry/chains/client"
+	registryrecvfd "github.com/networkservicemesh/sdk/pkg/registry/common/recvfd"
 
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov"
 	"github.com/networkservicemesh/sdk-sriov/pkg/sriov/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/endpoint"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clienturl"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/connect"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/discover"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/filtermechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/recvfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanismtranslation"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/null"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/roundrobin"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/switchcase"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
@@ -65,18 +70,18 @@ type ovsConnectNSServer struct {
 func NewSriovServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
 	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
 	pciPool resourcepool.PCIPool, resourcePool resourcepool.ResourcePool, sriovConfig *config.Config,
-	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	resourceLock := &sync.Mutex{}
 	resourcePoolClient := resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 	resourcePoolServer := resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 
 	return newEndPoint(ctx, name, authzServer, resourcePoolServer, resourcePoolClient, tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, clientDialOptions...)
 }
 
 func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServer networkservice.NetworkServiceServer,
 	resourcePoolClient networkservice.NetworkServiceClient, tokenGenerator token.GeneratorFunc, clientURL *url.URL,
-	bridgeName string, tunnelIPCidr net.IP, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	bridgeName string, tunnelIPCidr net.IP, dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	tunnelIP, err := utils.ParseTunnelIP(tunnelIPCidr)
 	if err != nil {
 		return nil, err
@@ -89,12 +94,19 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 	vxlanInterfacesMutex := &sync.Mutex{}
 	vxlanInterfaces := make(map[string]int)
 	rv := &ovsConnectNSServer{}
+
+	nseClient := registryclient.NewNetworkServiceEndpointRegistryClient(ctx, clientURL,
+		registryclient.WithNSEAdditionalFunctionality(registryrecvfd.NewNetworkServiceEndpointRegistryClient()),
+		registryclient.WithDialOptions(clientDialOptions...),
+	)
+	nsClient := registryclient.NewNetworkServiceRegistryClient(ctx, clientURL, registryclient.WithDialOptions(clientDialOptions...))
+
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
 		recvfd.NewServer(),
 		sendfd.NewServer(),
-		// Statically set the url we use to the unix file socket for the NSMgr
-		clienturl.NewServer(clientURL),
+		discover.NewServer(nsClient, nseClient),
+		roundrobin.NewServer(),
 		mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 			kernelmech.MECHANISM: switchcase.NewServer(
 				&switchcase.ServerCase{
@@ -120,6 +132,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 				client.WithoutRefresh(),
 				client.WithName(name),
 				client.WithDialOptions(clientDialOptions...),
+				client.WithDialTimeout(dialTimeout),
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
 					l2ovsconnect.NewClient(bridgeName),
@@ -129,6 +142,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					kernel.NewClient(bridgeName, parentIfMutex, parentIfRefCount),
 					resourcePoolClient,
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+					filtermechanisms.NewClient(),
 					recvfd.NewClient(),
 					sendfd.NewClient(),
 				),
@@ -147,7 +161,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 // NewKernelServer - returns kernel implementation of the ovsconnectns network service
 func NewKernelServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
 	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
-	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	return newEndPoint(ctx, name, authzServer, null.NewServer(), null.NewClient(), tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, clientDialOptions...)
 }
