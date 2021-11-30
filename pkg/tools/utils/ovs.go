@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux
+
 package utils
 
 import (
@@ -21,10 +23,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	kexec "k8s.io/utils/exec"
 )
+
+// L2ConnectionPoint contains egress point config used by clients for VLAN breakout
+type L2ConnectionPoint struct {
+	Interface string
+	Bridge    string
+}
 
 // GetInterfaceOfPort get Port number from Interface name in OVS
 func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
@@ -55,11 +65,28 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 }
 
 // ConfigureOvS creates ovs bridge and make it as an integration bridge
-func ConfigureOvS(ctx context.Context, bridgeName string) {
+func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoint, bridgeName string) error {
 	// Initialize the ovs utility wrapper.
 	exec := kexec.New()
 	if err := util.SetExec(exec); err != nil {
 		log.FromContext(ctx).Warnf("failed to initialize ovs exec helper: %v", err)
+	}
+
+	for _, cp := range l2Connections {
+		if cp.Bridge != "" {
+			// Create ovs bridge for client and endpoint connections
+			stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-br", cp.Bridge)
+			if err != nil {
+				log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
+			}
+		}
+		if cp.Interface == "" {
+			continue
+		}
+		err := configureL2Interface(ctx, cp)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Create ovs bridge for client and endpoint connections
@@ -74,4 +101,57 @@ func ConfigureOvS(ctx context.Context, bridgeName string) {
 		log.FromContext(ctx).Warnf("Failed to cleanup flows on %s "+
 			"stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
 	}
+
+	return nil
+}
+
+func configureL2Interface(ctx context.Context, cp *L2ConnectionPoint) error {
+	link, err := netlink.LinkByName(cp.Interface)
+	if err != nil {
+		return err
+	}
+	// TODO: find a way to flush the ip's (if exists) in one go.
+	v4addr, err := netlink.AddrList(link, netlink.FAMILY_V4)
+	if err != nil {
+		return err
+	}
+	for idx := range v4addr {
+		err = netlink.AddrDel(link, &v4addr[idx])
+		if err != nil {
+			return err
+		}
+	}
+	v6addr, err := netlink.AddrList(link, netlink.FAMILY_V6)
+	if err != nil {
+		return err
+	}
+	for idx := range v6addr {
+		err = netlink.AddrDel(link, &v6addr[idx])
+		if err != nil {
+			return err
+		}
+	}
+	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", cp.Bridge, cp.Interface)
+	if err != nil {
+		log.FromContext(ctx).Errorf("Failed to add l2 egress port %s to %s, stdout: %q, stderr: %q,"+
+			" error: %v", cp.Interface, cp.Bridge, stdout, stderr, err)
+		return err
+	}
+	link, err = netlink.LinkByName(cp.Bridge)
+	if err != nil {
+		return err
+	}
+	for idx := range v4addr {
+		err = netlink.AddrAdd(link, &v4addr[idx])
+		if err != nil {
+			return err
+		}
+	}
+	for idx := range v6addr {
+		err = netlink.AddrAdd(link, &v6addr[idx])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

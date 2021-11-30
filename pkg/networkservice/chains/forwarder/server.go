@@ -59,7 +59,7 @@ import (
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/l2ovsconnect"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/vxlan"
-	"github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
+	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 type ovsConnectNSServer struct {
@@ -70,23 +70,27 @@ type ovsConnectNSServer struct {
 func NewSriovServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
 	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
 	pciPool resourcepool.PCIPool, resourcePool resourcepool.ResourcePool, sriovConfig *config.Config,
-	dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	dialTimeout time.Duration, l2Connections map[string]*ovsutil.L2ConnectionPoint, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	resourceLock := &sync.Mutex{}
 	resourcePoolClient := resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 	resourcePoolServer := resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 
 	return newEndPoint(ctx, name, authzServer, resourcePoolServer, resourcePoolClient, tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, dialTimeout, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, clientDialOptions...)
 }
 
 func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServer networkservice.NetworkServiceServer,
 	resourcePoolClient networkservice.NetworkServiceClient, tokenGenerator token.GeneratorFunc, clientURL *url.URL,
-	bridgeName string, tunnelIPCidr net.IP, dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
-	tunnelIP, err := utils.ParseTunnelIP(tunnelIPCidr)
+	bridgeName string, tunnelIPCidr net.IP, dialTimeout time.Duration, l2Connections map[string]*ovsutil.L2ConnectionPoint,
+	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	tunnelIP, err := ovsutil.ParseTunnelIP(tunnelIPCidr)
 	if err != nil {
 		return nil, err
 	}
-	utils.ConfigureOvS(ctx, bridgeName)
+	err = ovsutil.ConfigureOvS(ctx, l2Connections, bridgeName)
+	if err != nil {
+		return nil, err
+	}
 
 	parentIfMutex := &sync.Mutex{}
 	parentIfRefCount := make(map[string]int)
@@ -161,7 +165,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 // NewKernelServer - returns kernel implementation of the ovsconnectns network service
 func NewKernelServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
 	tokenGenerator token.GeneratorFunc, clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP,
-	dialTimeout time.Duration, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	dialTimeout time.Duration, l2Connections map[string]*ovsutil.L2ConnectionPoint, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
 	return newEndPoint(ctx, name, authzServer, null.NewServer(), null.NewClient(), tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, dialTimeout, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, clientDialOptions...)
 }
