@@ -30,6 +30,8 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
+
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
 
@@ -57,7 +59,7 @@ func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.N
 		return conn, err
 	}
 
-	if err := addDel(ctx, logger, c.bridgeName, true); err != nil {
+	if err := addDel(ctx, logger, conn, c.bridgeName, true); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 		if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
@@ -72,7 +74,7 @@ func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connec
 	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Close")
 	_, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	l2ConnectErr := addDel(ctx, logger, c.bridgeName, false)
+	l2ConnectErr := addDel(ctx, logger, conn, c.bridgeName, false)
 	ifnames.Delete(ctx, metadata.IsClient(c))
 
 	if err != nil && l2ConnectErr != nil {
@@ -85,7 +87,10 @@ func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connec
 	return &empty.Empty{}, err
 }
 
-func addDel(ctx context.Context, logger log.Logger, bridgeName string, addDel bool) error {
+func addDel(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, addDel bool) error {
+	if mechanism := vlanmech.ToMechanism(conn.GetMechanism()); mechanism != nil {
+		return nil
+	}
 	endpointOvsPortInfo, ok := ifnames.Load(ctx, true)
 	if !ok {
 		return nil

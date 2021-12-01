@@ -90,8 +90,9 @@ func (k *kernelVethServer) Close(ctx context.Context, conn *networkservice.Conne
 		k.parentIfmutex.Lock()
 		defer k.parentIfmutex.Unlock()
 		var kernelServerErr error
-		_, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
-		if exists {
+		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(k))
+		if exists && !ovsPortInfo.IsL2Connect {
+			ifnames.Delete(ctx, metadata.IsClient(k))
 			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k))
 		}
 		if err != nil && kernelServerErr != nil {

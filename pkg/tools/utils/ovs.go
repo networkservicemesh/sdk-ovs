@@ -74,7 +74,7 @@ func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoi
 
 	for _, cp := range l2Connections {
 		if cp.Bridge != "" {
-			// Create ovs bridge for client and endpoint connections
+			// Create ovs bridge for l2 egress point
 			stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-br", cp.Bridge)
 			if err != nil {
 				log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)

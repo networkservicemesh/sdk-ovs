@@ -58,6 +58,7 @@ import (
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/l2ovsconnect"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/kernel"
+	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/vlan"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/vxlan"
 	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
@@ -146,6 +147,7 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 					kernel.NewClient(bridgeName, parentIfMutex, parentIfRefCount),
 					resourcePoolClient,
 					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+					vlan.NewClient(bridgeName, l2Connections),
 					filtermechanisms.NewClient(),
 					recvfd.NewClient(),
 					sendfd.NewClient(),

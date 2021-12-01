@@ -88,8 +88,9 @@ func (k *kernelSmartVFServer) Close(ctx context.Context, conn *networkservice.Co
 		k.parentIfmutex.Lock()
 		defer k.parentIfmutex.Unlock()
 		var kernelServerErr error
-		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
-		if exists {
+		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(k))
+		if exists && !ovsPortInfo.IsL2Connect {
+			ifnames.Delete(ctx, metadata.IsClient(k))
 			kernelServerErr = resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName)
 		}
 
