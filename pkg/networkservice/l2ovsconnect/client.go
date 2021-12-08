@@ -88,6 +88,7 @@ func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connec
 }
 
 func addDel(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string, addDel bool) error {
+	// when mechanism is vlan, then return prematurely, no need of programming cross connect flows.
 	if mechanism := vlanmech.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		return nil
 	}

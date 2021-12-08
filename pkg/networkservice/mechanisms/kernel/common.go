@@ -109,7 +109,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 }
 
 func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
-	parentIfRefCountMap map[string]int, serviceToparentIfMap map[string]string, isClient bool) error {
+	parentIfRefCountMap map[string]int, serviceToparentIfMap map[string]string, isL2Connect, isClient bool) error {
 	var mechanism *kernel.Mechanism
 	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
 		return nil
@@ -141,13 +141,14 @@ func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	}
 
 	if refCount == 0 {
-		/* delete the port from ovs bridge */
-		stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
-		if err != nil {
-			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
-				" error: %v", ifaceName, bridgeName, stdout, stderr, err)
+		if !isL2Connect {
+			/* delete the port from ovs bridge and this op is valid only for p2p OF ports */
+			stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
+			if err != nil {
+				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
+					" error: %v", ifaceName, bridgeName, stdout, stderr, err)
+			}
 		}
-
 		/* Get a link object for the interface */
 		ifaceLink, err := netlink.LinkByName(ifaceName)
 		if err != nil {

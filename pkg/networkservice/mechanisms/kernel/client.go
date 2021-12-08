@@ -107,10 +107,11 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 		var kernelMechErr error
 		ovsPortInfo, exists := ifnames.Load(ctx, metadata.IsClient(c))
 		if exists {
+			// ovsPortInfo.IsL2Connect is always false for endpoint ovs port
 			if !ovsPortInfo.IsVfRepresentor {
-				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, metadata.IsClient(c))
+				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, ovsPortInfo.IsL2Connect, metadata.IsClient(c))
 			} else {
-				kernelMechErr = resetVF(logger, ovsPortInfo, c.parentIfRefCountMap, c.bridgeName)
+				kernelMechErr = resetVF(logger, ovsPortInfo, c.parentIfRefCountMap, c.bridgeName, ovsPortInfo.IsL2Connect)
 			}
 		}
 

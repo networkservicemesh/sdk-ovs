@@ -77,7 +77,7 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 	return nil
 }
 
-func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountMap map[string]int, bridgeName string) error {
+func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountMap map[string]int, bridgeName string, isL2Connect bool) error {
 	/* delete the port from ovs bridge */
 	var refCount int
 	if count, exists := parentIfRefCountMap[portInfo.PortName]; exists {
@@ -87,11 +87,14 @@ func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountM
 		}
 	}
 	if refCount == 0 {
-		stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
-		if err != nil {
-			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
-				" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
-			return err
+		if !isL2Connect {
+			// this op is valid only for p2p connection
+			stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
+			if err != nil {
+				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
+					" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
+				return err
+			}
 		}
 		delete(parentIfRefCountMap, portInfo.PortName)
 	}

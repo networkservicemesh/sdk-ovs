@@ -16,7 +16,7 @@
 
 // +build linux
 
-// Package vlan implementing vlan client chain element implementing remote vlan breakout mechanism
+// Package vlan client chain element implementing remote vlan breakout mechanism
 package vlan
 
 import (
@@ -99,15 +99,15 @@ func (c *vlanClient) addDelVlan(ctx context.Context, logger log.Logger, conn *ne
 	if mechanism == nil {
 		return nil
 	}
+	nsClientOvsPortInfo, ok := ifnames.Load(ctx, false)
+	if !ok || (isAdd && nsClientOvsPortInfo.IsCrossConnected) {
+		return nil
+	}
 	viaSelector, ok := conn.GetLabels()[viaLabel]
 	if !ok {
 		return nil
 	}
 	l2Point, ok := c.l2Connections[viaSelector]
-	if !ok {
-		return nil
-	}
-	nsClientOvsPortInfo, ok := ifnames.Load(ctx, false)
 	if !ok {
 		return nil
 	}
@@ -127,13 +127,13 @@ func (c *vlanClient) addDelVlan(ctx context.Context, logger log.Logger, conn *ne
 			return err
 		}
 		nsClientOvsPortInfo.IsL2Connect = true
+		nsClientOvsPortInfo.IsCrossConnected = true
 	} else {
 		stdout, stderr, err := util.RunOVSVsctl("del-port", l2Point.Bridge, nsClientOvsPortInfo.PortName)
 		if err != nil {
 			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 				" error: %v", nsClientOvsPortInfo.PortName, l2Point.Bridge, stdout, stderr, err)
 		}
-		ifnames.Delete(ctx, false)
 	}
 	return nil
 }
