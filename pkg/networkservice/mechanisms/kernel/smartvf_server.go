@@ -69,7 +69,7 @@ func (k *kernelSmartVFServer) Request(ctx context.Context, request *networkservi
 		defer cancelClose()
 		if ovsPortInfo, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
 			k.parentIfmutex.Lock()
-			if kernelServerErr := resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName); kernelServerErr != nil {
+			if kernelServerErr := resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName, false); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
 			k.parentIfmutex.Unlock()
@@ -90,7 +90,7 @@ func (k *kernelSmartVFServer) Close(ctx context.Context, conn *networkservice.Co
 		var kernelServerErr error
 		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 		if exists {
-			kernelServerErr = resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName)
+			kernelServerErr = resetVF(logger, ovsPortInfo, k.parentIfRefCountMap, k.bridgeName, ovsPortInfo.IsL2Connect)
 		}
 
 		if err != nil && kernelServerErr != nil {

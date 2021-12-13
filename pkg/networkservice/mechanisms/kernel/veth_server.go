@@ -57,7 +57,7 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 	if !isEstablished {
 		k.parentIfmutex.Lock()
 		if err := setupVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k)); err != nil {
-			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k))
+			_ = resetVeth(ctx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, false, metadata.IsClient(k))
 			k.parentIfmutex.Unlock()
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 		defer cancelClose()
 		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
 			k.parentIfmutex.Lock()
-			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k)); kernelServerErr != nil {
+			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, false, metadata.IsClient(k)); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
 			k.parentIfmutex.Unlock()
@@ -90,9 +90,9 @@ func (k *kernelVethServer) Close(ctx context.Context, conn *networkservice.Conne
 		k.parentIfmutex.Lock()
 		defer k.parentIfmutex.Unlock()
 		var kernelServerErr error
-		_, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
+		ovsPortInfo, exists := ifnames.LoadAndDelete(ctx, metadata.IsClient(k))
 		if exists {
-			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, metadata.IsClient(k))
+			kernelServerErr = resetVeth(ctx, logger, conn, k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, ovsPortInfo.IsL2Connect, metadata.IsClient(k))
 		}
 		if err != nil && kernelServerErr != nil {
 			return nil, errors.Wrap(err, kernelServerErr.Error())

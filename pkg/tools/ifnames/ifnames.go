@@ -35,6 +35,7 @@ type OvsPortInfo struct {
 	IsTunnelPort     bool
 	IsVfRepresentor  bool
 	IsCrossConnected bool
+	IsL2Connect      bool
 	VNI              uint32
 }
 
