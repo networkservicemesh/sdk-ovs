@@ -6,9 +6,9 @@ require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
 	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.3.0-rc.1.0.20220405210054-fbcde048efa5
-	github.com/networkservicemesh/sdk v0.5.1-0.20220408124029-adfd2db62d17
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20220408124342-c6a45e684ec8
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20220408125444-7f4929ac39a1
+	github.com/networkservicemesh/sdk v0.5.1-0.20220415125440-009c3f3a16bd
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20220415125717-fb284fbe9fc1
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20220415130216-9efc2a84b057
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.1.1-0.20220118170537-d6b03fdeb845
