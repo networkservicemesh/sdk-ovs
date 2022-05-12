@@ -101,11 +101,14 @@ func newEndPoint(ctx context.Context, name string, authzServer, resourcePoolServ
 	vxlanInterfaces := make(map[string]int)
 	rv := &ovsConnectNSServer{}
 
-	nseClient := registryclient.NewNetworkServiceEndpointRegistryClient(ctx, clientURL,
+	nseClient := registryclient.NewNetworkServiceEndpointRegistryClient(ctx,
+		registryclient.WithClientURL(clientURL),
 		registryclient.WithNSEAdditionalFunctionality(registryrecvfd.NewNetworkServiceEndpointRegistryClient()),
 		registryclient.WithDialOptions(clientDialOptions...),
 	)
-	nsClient := registryclient.NewNetworkServiceRegistryClient(ctx, clientURL, registryclient.WithDialOptions(clientDialOptions...))
+	nsClient := registryclient.NewNetworkServiceRegistryClient(ctx,
+		registryclient.WithClientURL(clientURL),
+		registryclient.WithDialOptions(clientDialOptions...))
 
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
