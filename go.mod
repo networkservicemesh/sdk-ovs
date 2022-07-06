@@ -5,10 +5,10 @@ go 1.18
 require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
 	github.com/golang/protobuf v1.5.2
-	github.com/networkservicemesh/api v1.3.2-0.20220516230921-edaa6f46d6ab
-	github.com/networkservicemesh/sdk v0.5.1-0.20220704121245-6cf1b72d2395
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20220704121914-75c5e0fd3acd
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20220704122303-ad8159884864
+	github.com/networkservicemesh/api v1.4.1-0.20220705145838-0b96f94a2adb
+	github.com/networkservicemesh/sdk v0.5.1-0.20220706093325-9d885cffbc5c
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20220706093902-9d98b29132d8
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20220706094448-fe3d3b740841
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
