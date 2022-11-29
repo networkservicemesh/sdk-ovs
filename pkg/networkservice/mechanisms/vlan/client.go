@@ -30,12 +30,14 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/vlan/mtu"
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
@@ -51,7 +53,10 @@ type vlanClient struct {
 
 // NewClient returns a client chain element implementing VLAN breakout for NS client
 func NewClient(bridgeName string, l2Connections map[string]*ovsutil.L2ConnectionPoint) networkservice.NetworkServiceClient {
-	return &vlanClient{bridgeName: bridgeName, l2Connections: l2Connections}
+	return chain.NewNetworkServiceClient(
+		mtu.NewClient(l2Connections),
+		&vlanClient{bridgeName: bridgeName, l2Connections: l2Connections},
+	)
 }
 
 func (c *vlanClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
