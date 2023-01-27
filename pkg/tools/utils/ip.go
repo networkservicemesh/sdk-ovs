@@ -1,5 +1,7 @@
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,15 +20,16 @@
 package utils
 
 import (
-	"errors"
 	"net"
+
+	"github.com/pkg/errors"
 )
 
 // ParseTunnelIP parses and maps the given ip cidr with available network interface
 func ParseTunnelIP(srcIP net.IP) (net.IP, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	for _, iface := range ifaces {

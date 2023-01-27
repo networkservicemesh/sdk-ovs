@@ -1,5 +1,7 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +23,6 @@ package kernel
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Mellanox/sriovnet"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -29,6 +30,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 	ovsutil "github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
@@ -54,14 +56,14 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 	// get added into ovs bridge for the control plane configuration.
 	vfRepresentor, err := sriovnet.GetVfRepresentor(vfConfig.PFInterfaceName, vfConfig.VFNum)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 	if _, exists := parentIfRefCount[vfRepresentor]; !exists {
 		stdout, stderr, err1 := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
 		if err1 != nil {
 			logger.Errorf("Failed to add representor port %s to %s, stdout: %q, stderr: %q,"+
 				" error: %v", vfRepresentor, bridgeName, stdout, stderr, err1)
-			return err1
+			return errors.WithStack(err1)
 		}
 		parentIfRefCount[vfRepresentor] = 0
 	}
@@ -94,7 +96,7 @@ func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountM
 			if err != nil {
 				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 					" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
-				return err
+				return errors.WithStack(err)
 			}
 		}
 		delete(parentIfRefCountMap, portInfo.PortName)
