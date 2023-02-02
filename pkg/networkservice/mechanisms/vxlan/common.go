@@ -1,5 +1,7 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,7 +96,7 @@ func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesM
 		defer vxlanInterfacesMutex.Unlock()
 		if count := vxlanRefCountMap[ovsTunnelName]; count == 1 {
 			if err := deleteVXLAN(bridgeName, ovsTunnelName); err != nil {
-				return errors.Wrapf(err, "failed to delete VXLAN interface")
+				return err
 			}
 			delete(vxlanRefCountMap, ovsTunnelName)
 		} else if count := vxlanRefCountMap[ovsTunnelName]; count > 1 {

@@ -29,7 +29,7 @@ import (
 func ParseTunnelIP(srcIP net.IP) (net.IP, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to get list of network interfaces")
 	}
 
 	for _, iface := range ifaces {

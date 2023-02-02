@@ -48,7 +48,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Infof("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to add flow on %s for port %s stdout: %s stderr: %s", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 	if stderr != "" {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
@@ -59,7 +59,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, clientOvsPortInfo.PortName, stdout, stderr, err)
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "Failed to add flow on %s for port %s stdout: %s stderr: %s", bridgeName, clientOvsPortInfo.PortName, stdout, stderr)
 	}
 
 	if stderr != "" {
@@ -85,7 +85,7 @@ func deleteLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to delete flow on %s for port %s, stdout: %q, stderr: %q", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 
 	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d", clientOvsPortInfo.PortNo))

@@ -56,14 +56,14 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 	// get added into ovs bridge for the control plane configuration.
 	vfRepresentor, err := sriovnet.GetVfRepresentor(vfConfig.PFInterfaceName, vfConfig.VFNum)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to find VF representor for uplink %s", vfConfig.PFInterfaceName)
 	}
 	if _, exists := parentIfRefCount[vfRepresentor]; !exists {
 		stdout, stderr, err1 := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
 		if err1 != nil {
 			logger.Errorf("Failed to add representor port %s to %s, stdout: %q, stderr: %q,"+
 				" error: %v", vfRepresentor, bridgeName, stdout, stderr, err1)
-			return errors.WithStack(err1)
+			return errors.Wrapf(err1, "Failed to add representor port %s to %s, stdout: %q, stderr: %q", vfRepresentor, bridgeName, stdout, stderr)
 		}
 		parentIfRefCount[vfRepresentor] = 0
 	}
@@ -96,7 +96,7 @@ func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountM
 			if err != nil {
 				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 					" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)
-				return errors.WithStack(err)
+				return errors.Wrapf(err, "Failed to delete port %s from %s, stdout: %q, stderr: %q", portInfo.PortName, bridgeName, stdout, stderr)
 			}
 		}
 		delete(parentIfRefCountMap, portInfo.PortName)

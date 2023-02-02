@@ -47,14 +47,14 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 	for count > 0 {
 		ofPort, stdErr, err := util.RunOVSVsctl("--if-exists", "get", "interface", interfaceName, "ofport")
 		if err != nil {
-			return -1, errors.WithStack(err)
+			return -1, errors.Wrap(err, "failed to run command via ovs-vsctl")
 		}
 		if stdErr != "" {
 			logger.Infof("error occurred while retrieving of port for interface %s - %s", interfaceName, stdErr)
 		}
 		portNo, err = strconv.Atoi(ofPort)
 		if err != nil {
-			return -1, errors.WithStack(err)
+			return -1, errors.Wrapf(err, "failed to convert port %s to int", ofPort)
 		}
 		if portNo == 0 {
 			logger.Infof("got port number %d for interface %s, retrying", portNo, interfaceName)
@@ -112,49 +112,49 @@ func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoi
 func configureL2Interface(ctx context.Context, cp *L2ConnectionPoint) error {
 	link, err := netlink.LinkByName(cp.Interface)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to find link %s", cp.Interface)
 	}
 	// TODO: find a way to flush the ip's (if exists) in one go.
 	v4addr, err := netlink.AddrList(link, netlink.FAMILY_V4)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to get a list of IP addresses")
 	}
 	for idx := range v4addr {
 		err = netlink.AddrDel(link, &v4addr[idx])
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to delete IP address from link device")
 		}
 	}
 	v6addr, err := netlink.AddrList(link, netlink.FAMILY_V6)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to get a list of IP addresses")
 	}
 	for idx := range v6addr {
 		err = netlink.AddrDel(link, &v6addr[idx])
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to delete IP address from link device")
 		}
 	}
 	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", cp.Bridge, cp.Interface)
 	if err != nil {
 		log.FromContext(ctx).Errorf("Failed to add l2 egress port %s to %s, stdout: %q, stderr: %q,"+
 			" error: %v", cp.Interface, cp.Bridge, stdout, stderr, err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to run command via ovs-vsctl")
 	}
 	link, err = netlink.LinkByName(cp.Bridge)
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to find link %s", cp.Bridge)
 	}
 	for idx := range v4addr {
 		err = netlink.AddrAdd(link, &v4addr[idx])
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to add IP address from link device")
 		}
 	}
 	for idx := range v6addr {
 		err = netlink.AddrAdd(link, &v6addr[idx])
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to add IP address from link device")
 		}
 	}
 	return nil
