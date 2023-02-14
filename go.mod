@@ -6,9 +6,9 @@ require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
 	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.7.2-0.20230123083145-4a6c3ec589e1
-	github.com/networkservicemesh/sdk v0.5.1-0.20230213134519-3aa9aa0d5e1b
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20230213141018-c280bc6ee279
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20230213142844-2ea338a83e06
+	github.com/networkservicemesh/sdk v0.5.1-0.20230214013943-438ec051e69b
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20230214122858-b7a1313f02af
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20230214123342-528783e52303
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
@@ -33,6 +33,7 @@ require (
 	github.com/ebay/go-ovn v0.1.1-0.20210731003635-d96abc06b52c // indirect
 	github.com/ebay/libovsdb v0.2.1-0.20200719163122-3332afaeb27c // indirect
 	github.com/edwarnicke/exechelper v1.0.2 // indirect
+	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29 // indirect
 	github.com/edwarnicke/grpcfd v1.1.2 // indirect
 	github.com/edwarnicke/serialize v1.0.7 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
