@@ -1,5 +1,7 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,7 +91,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 		if err != nil {
 			logger.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
 				" error: %v", hostIfName, bridgeName, stdout, stderr, err)
-			return err
+			return errors.Wrapf(err, "Failed to add port %s to %s, stdout: %q, stderr: %q", hostIfName, bridgeName, stdout, stderr)
 		}
 		parentIfRefCountMap[hostIfName] = 0
 	}
@@ -187,12 +189,12 @@ func SetInterfacesUp(logger log.Logger, ifaceNames ...string) error {
 		link, err := netlink.LinkByName(ifaceName)
 		if err != nil {
 			logger.Errorf("local: failed to lookup %q, %v", ifaceName, err)
-			return err
+			return errors.Wrapf(err, "failed to find link %s", ifaceName)
 		}
 		/* Bring the interface Up */
 		if err = netlink.LinkSetUp(link); err != nil {
 			logger.Errorf("local: failed to bring %q up: %v", ifaceName, err)
-			return err
+			return errors.Wrapf(err, "failed to enable link device %s", ifaceName)
 		}
 	}
 	return nil

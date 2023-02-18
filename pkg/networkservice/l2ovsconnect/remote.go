@@ -1,5 +1,7 @@
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +23,7 @@ import (
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
@@ -61,7 +64,7 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	if err != nil {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, ovsLocalPort, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "failed to add flow on %s for port %s stdout: %s stderr: %s", bridgeName, ovsLocalPort, stdout, stderr)
 	}
 	if stderr != "" {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
@@ -72,7 +75,7 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	if err != nil {
 		logger.Errorf("Failed to add tunnel flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, ovsTunnelPort, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "failed to add tunnel flow on %s for port %s stdout: %s, stderr: %s", bridgeName, ovsTunnelPort, stdout, stderr)
 	}
 
 	if stderr != "" {
@@ -116,14 +119,14 @@ func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, ovsLocalPort, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "Failed to delete flow on %s for port %s, stdout: %q, stderr: %q", bridgeName, ovsLocalPort, stdout, stderr)
 	}
 
 	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d,tun_id=%d", ovsTunnelPortNum, vni))
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s on VNI %d, stdout: %q, stderr: %q, error: %v", bridgeName, ovsTunnelPort, vni, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "failed to delete flow on %s for port %s on VNI %d, stdout: %q, stderr: %q", bridgeName, ovsTunnelPort, vni, stdout, stderr)
 	}
 
 	return nil

@@ -1,5 +1,7 @@
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +23,7 @@ import (
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
 )
@@ -45,7 +48,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Infof("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "failed to add flow on %s for port %s stdout: %s stderr: %s", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 	if stderr != "" {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
@@ -56,7 +59,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, clientOvsPortInfo.PortName, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "Failed to add flow on %s for port %s stdout: %s stderr: %s", bridgeName, clientOvsPortInfo.PortName, stdout, stderr)
 	}
 
 	if stderr != "" {
@@ -82,7 +85,7 @@ func deleteLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
-		return err
+		return errors.Wrapf(err, "failed to delete flow on %s for port %s, stdout: %q, stderr: %q", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 
 	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d", clientOvsPortInfo.PortNo))
