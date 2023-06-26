@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Nordix Foundation.
+// Copyright (c) 2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -22,6 +22,7 @@ package mtu
 import (
 	"context"
 
+	"github.com/edwarnicke/genericsync"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -41,13 +42,14 @@ const (
 
 type mtuClient struct {
 	l2Connections map[string]*ovsutil.L2ConnectionPoint
-	mtus          mtuMap
+	mtus          *genericsync.Map[string, uint32]
 }
 
 // NewClient - returns client chain element to manage vlan MTU
 func NewClient(l2Connections map[string]*ovsutil.L2ConnectionPoint) networkservice.NetworkServiceClient {
 	return &mtuClient{
 		l2Connections: l2Connections,
+		mtus:          &genericsync.Map[string, uint32]{},
 	}
 }
 

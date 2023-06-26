@@ -61,9 +61,8 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 			count--
 			time.Sleep(500 * time.Millisecond)
 			continue
-		} else {
-			break
 		}
+		break
 	}
 	return portNo, nil
 }
