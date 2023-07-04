@@ -413,12 +413,12 @@ github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRW
 github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f/go.mod h1:ZdcZmHo+o7JKHSa8/e818NopupXU1YMK5fe1lsApnBw=
 github.com/networkservicemesh/api v1.9.1-0.20230627143611-9785eacf9687 h1:Kb6h5eMQpRF4jwRIJjD/uciTsA5Fr0b61fFUmyyVVh4=
 github.com/networkservicemesh/api v1.9.1-0.20230627143611-9785eacf9687/go.mod h1:DO7D13Y4x/A8tQ2cQyUWa9o5wi7XHUB8+vITWRKreCc=
-github.com/networkservicemesh/sdk v0.5.1-0.20230703092623-0ba94eaa823e h1:ivVTOyjs4LR7QoVyhaJmKNJXMUjWzqa1KwdESGz9fAE=
-github.com/networkservicemesh/sdk v0.5.1-0.20230703092623-0ba94eaa823e/go.mod h1:r9XRbQ6UlS0+hefduzFb1cX9j3W/XNOqFqUlcQk7xYM=
-github.com/networkservicemesh/sdk-kernel v0.0.0-20230703092929-556b12d80987 h1:Z9yQQI7pu0/Fa3ZdoM04MiQfbJv7SuZSPw8AKsFQh/Y=
-github.com/networkservicemesh/sdk-kernel v0.0.0-20230703092929-556b12d80987/go.mod h1:2dB/VwPmweTXzHSzKnvRxAcpAdjenDDOgCFxKtMTpZo=
-github.com/networkservicemesh/sdk-sriov v0.0.0-20230703093425-a33a6a4ed5b8 h1:2dh8/GmSPKuPbX5uht3crQKGhqYgsjxSRY+apxt3KIw=
-github.com/networkservicemesh/sdk-sriov v0.0.0-20230703093425-a33a6a4ed5b8/go.mod h1:6ANDhveTGvA8nT6bx1IisQSpdXbvKQhbjBaiMcu+EQE=
+github.com/networkservicemesh/sdk v0.5.1-0.20230704094111-f349173882f2 h1:xT48XAimEr6Ip/qjKIJyu4nse3gfVTJ9buzS2IzOEAg=
+github.com/networkservicemesh/sdk v0.5.1-0.20230704094111-f349173882f2/go.mod h1:r9XRbQ6UlS0+hefduzFb1cX9j3W/XNOqFqUlcQk7xYM=
+github.com/networkservicemesh/sdk-kernel v0.0.0-20230704094415-d67bccbf0625 h1:ochWYH671Jf1e3BAYggwkycF+OhTbJ6SAaLGzF8dcw0=
+github.com/networkservicemesh/sdk-kernel v0.0.0-20230704094415-d67bccbf0625/go.mod h1:oo5NTzZz/ThBpLNZrO81tyFY5ncPF3GTjCniyDzc79I=
+github.com/networkservicemesh/sdk-sriov v0.0.0-20230704094843-8f7175361d97 h1:oN4HvUJKyO59vUCRbvasePRNyGmbULYbCOtm+ZK/uT4=
+github.com/networkservicemesh/sdk-sriov v0.0.0-20230704094843-8f7175361d97/go.mod h1:XHVQqjOhQPvG2JzkCqbsSN4sVQzigMzBzm+VUXGzTeo=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8 h1:nPr65rt6Y5JFSKQO7qToXr7pePgD6Gwiw05lkbyAQTE=
@@ -588,6 +588,7 @@ go.opentelemetry.io/otel/trace v1.16.0/go.mod h1:Yt9vYq1SdNz3xdjZZK7wcXv1qv2pwLk
 go.opentelemetry.io/proto/otlp v0.7.0/go.mod h1:PqfVotwruBrMGOCsRd/89rSnXhoiJIqeYNgFYFoEGnI=
 go.opentelemetry.io/proto/otlp v0.19.0 h1:IVN6GR+mhC4s5yfcTbmzHYODqvWAp3ZedA2SJPI1Nnw=
 go.opentelemetry.io/proto/otlp v0.19.0/go.mod h1:H7XAot3MsfNsj7EXtrA2q5xSNQ10UqI405h3+duxN4U=
+go.uber.org/atomic v1.7.0 h1:ADUqmZGgLDDfbSL9ZmPxKTybcoEYHgpYfELNoN+7hsw=
 go.uber.org/goleak v1.1.10/go.mod h1:8a7PlsEVH3e/a/GLqe5IIrQx6GzcnRmZEufDUTk4A7A=
 go.uber.org/goleak v1.2.1 h1:NBol2c7O1ZokfZ0LEU9K6Whx/KnwvepVetCUhtKja4A=
 golang.org/x/crypto v0.0.0-20180214000028-650f4a345ab4/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
