@@ -7,9 +7,9 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
 	github.com/networkservicemesh/api v1.9.1-0.20230627143611-9785eacf9687
-	github.com/networkservicemesh/sdk v0.5.1-0.20230710100721-01bb35f8c3d6
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20230710101045-a25e30ad5d4f
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20230710101603-bbccb51d433a
+	github.com/networkservicemesh/sdk v0.5.1-0.20230713084322-eaf1d25c7512
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20230713084617-8de98ab0de7f
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20230713085045-7c6038117647
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
@@ -87,6 +87,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.11.0 // indirect
