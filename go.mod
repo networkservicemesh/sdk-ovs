@@ -6,10 +6,10 @@ require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
-	github.com/networkservicemesh/api v1.10.1-0.20230822145124-c4a3ece88804
-	github.com/networkservicemesh/sdk v0.5.1-0.20231005102834-7ad780b13635
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20231005103322-5f6757f0685c
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20231005104020-b74f530de173
+	github.com/networkservicemesh/api v1.11.0
+	github.com/networkservicemesh/sdk v1.11.0
+	github.com/networkservicemesh/sdk-kernel v1.11.0
+	github.com/networkservicemesh/sdk-sriov v1.11.0
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
