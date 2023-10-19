@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,6 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
+// +build linux
+
 // Package l2ovsconnect chain element which cross connects both client and endpoint.
 // This suppports both local and remote (vxlan) cross connections.
 package l2ovsconnect
@@ -23,6 +26,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -76,6 +80,7 @@ func (c *l2ConnectClient) Close(ctx context.Context, conn *networkservice.Connec
 
 	l2ConnectErr := addDel(ctx, logger, conn, c.bridgeName, false)
 	ifnames.Delete(ctx, metadata.IsClient(c))
+	vfconfig.Delete(ctx, metadata.IsClient(c))
 
 	if err != nil && l2ConnectErr != nil {
 		return nil, errors.Wrap(err, l2ConnectErr.Error())

@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
@@ -15,6 +15,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//go:build linux
+// +build linux
 
 package l2ovsconnect
 
@@ -69,6 +72,8 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	if stderr != "" {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s", bridgeName, ovsLocalPort, stdout, stderr)
+	} else {
+		logger.Debugf("Flow added on %s for port %s", bridgeName, ovsLocalPort)
 	}
 
 	stdout, stderr, err = util.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleTo)
@@ -81,6 +86,8 @@ func createRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 	if stderr != "" {
 		logger.Errorf("Failed to add tunnel flow on %s for port %s stdout: %s"+
 			" stderr: %s", bridgeName, ovsTunnelPort, stdout, stderr)
+	} else {
+		logger.Debugf("Flow added on %s for port %s", bridgeName, ovsTunnelPort)
 	}
 
 	endpointOvsPortInfo.IsCrossConnected = true
@@ -121,13 +128,13 @@ func deleteRemoteCrossConnect(logger log.Logger, bridgeName string, endpointOvsP
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, ovsLocalPort, stdout, stderr, err)
 		return errors.Wrapf(err, "Failed to delete flow on %s for port %s, stdout: %q, stderr: %q", bridgeName, ovsLocalPort, stdout, stderr)
 	}
-
+	logger.Debugf("Flow deleted on %s for port %s", bridgeName, ovsLocalPort)
 	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d,tun_id=%d", ovsTunnelPortNum, vni))
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s on VNI %d, stdout: %q, stderr: %q, error: %v", bridgeName, ovsTunnelPort, vni, stdout, stderr, err)
 		return errors.Wrapf(err, "failed to delete flow on %s for port %s on VNI %d, stdout: %q, stderr: %q", bridgeName, ovsTunnelPort, vni, stdout, stderr)
 	}
-
+	logger.Debugf("Flow deleted on %s for port %s", bridgeName, ovsTunnelPort)
 	return nil
 }

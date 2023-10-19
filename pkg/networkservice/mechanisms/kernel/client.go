@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -110,7 +110,7 @@ func (c *kernelClient) Close(ctx context.Context, conn *networkservice.Connectio
 		if exists {
 			// ovsPortInfo.IsL2Connect is always false for endpoint ovs port
 			if !ovsPortInfo.IsVfRepresentor {
-				kernelMechErr = resetVeth(ctx, logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, ovsPortInfo.IsL2Connect, metadata.IsClient(c))
+				kernelMechErr = resetVeth(logger, conn, c.bridgeName, c.parentIfRefCountMap, c.serviceToparentIfMap, ovsPortInfo.IsL2Connect, metadata.IsClient(c))
 			} else {
 				kernelMechErr = resetVF(logger, ovsPortInfo, c.parentIfRefCountMap, c.bridgeName, ovsPortInfo.IsL2Connect)
 			}

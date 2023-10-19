@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
@@ -78,6 +78,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 		if err := createInterfaces(contIfName, hostIfName); err != nil {
 			return err
 		}
+		logger.Debugf("Interface %s created, peername: %s", contIfName, hostIfName)
 		if err := SetInterfacesUp(logger, contIfName, hostIfName); err != nil {
 			return err
 		}
@@ -111,7 +112,7 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	return nil
 }
 
-func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Connection, bridgeName string,
+func resetVeth(logger log.Logger, conn *networkservice.Connection, bridgeName string,
 	parentIfRefCountMap map[string]int, serviceToparentIfMap map[string]string, isL2Connect, isClient bool) error {
 	var mechanism *kernel.Mechanism
 	if mechanism = kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
@@ -166,11 +167,10 @@ func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 		if err := netlink.LinkDel(ifaceLink); err != nil {
 			return errors.Errorf("local: failed to delete the VETH pair - %v", err)
 		}
+		logger.Debugf("Interface %s deleted", ifaceName)
 		delete(parentIfRefCountMap, ifaceName)
 		delete(serviceToparentIfMap, serviceName)
 	}
-
-	vfconfig.Delete(ctx, isClient)
 	return nil
 }
 
