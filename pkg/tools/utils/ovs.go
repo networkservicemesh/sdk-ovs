@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
@@ -106,6 +106,14 @@ func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoi
 	}
 
 	return nil
+}
+
+// DeleteBridge delete ovs bridge for client and endpoint connections
+func DeleteBridge(ctx context.Context, bridgeName string) {
+	stdout, stderr, err := util.RunOVSVsctl("del-br", bridgeName)
+	if err != nil {
+		log.FromContext(ctx).Warnf("Failed to remove bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
+	}
 }
 
 func configureL2Interface(ctx context.Context, cp *L2ConnectionPoint) error {
