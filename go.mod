@@ -7,9 +7,9 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
 	github.com/networkservicemesh/api v1.11.1-0.20231031152153-730abd666985
-	github.com/networkservicemesh/sdk v0.5.1-0.20231114141517-70f3d8880671
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20231114141837-f4ba45102276
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20231114142221-296e71a0be5a
+	github.com/networkservicemesh/sdk v0.5.1-0.20231115135824-7e78948c1d57
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20231115140106-8c1169144beb
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20231115140431-9c748414f267
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
@@ -91,7 +91,7 @@ require (
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
-	golang.org/x/sys v0.14.0 // indirect
+	golang.org/x/sys v0.14.1-0.20231113162313-11eadc05e9bf // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
