@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -30,7 +30,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
@@ -87,7 +86,8 @@ func setupVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 	}
 
 	if _, exists := parentIfRefCountMap[hostIfName]; !exists {
-		stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, hostIfName)
+		w := &ovsutil.OVSRunWrapper{Logger: logger}
+		stdout, stderr, err := w.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, hostIfName)
 		if err != nil {
 			logger.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
 				" error: %v", hostIfName, bridgeName, stdout, stderr, err)
@@ -145,8 +145,9 @@ func resetVeth(ctx context.Context, logger log.Logger, conn *networkservice.Conn
 
 	if refCount == 0 {
 		if !isL2Connect {
+			w := &ovsutil.OVSRunWrapper{Logger: logger}
 			/* delete the port from ovs bridge and this op is valid only for p2p OF ports */
-			stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ifaceName)
+			stdout, stderr, err := w.RunOVSVsctl("del-port", bridgeName, ifaceName)
 			if err != nil {
 				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 					" error: %v", ifaceName, bridgeName, stdout, stderr, err)

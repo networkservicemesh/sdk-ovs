@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -29,7 +29,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
@@ -59,7 +58,8 @@ func setupVF(ctx context.Context, logger log.Logger, conn *networkservice.Connec
 		return errors.Wrapf(err, "failed to find VF representor for uplink %s", vfConfig.PFInterfaceName)
 	}
 	if _, exists := parentIfRefCount[vfRepresentor]; !exists {
-		stdout, stderr, err1 := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
+		w := &ovsutil.OVSRunWrapper{Logger: logger}
+		stdout, stderr, err1 := w.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, vfRepresentor)
 		if err1 != nil {
 			logger.Errorf("Failed to add representor port %s to %s, stdout: %q, stderr: %q,"+
 				" error: %v", vfRepresentor, bridgeName, stdout, stderr, err1)
@@ -91,8 +91,9 @@ func resetVF(logger log.Logger, portInfo *ifnames.OvsPortInfo, parentIfRefCountM
 	}
 	if refCount == 0 {
 		if !isL2Connect {
+			w := &ovsutil.OVSRunWrapper{Logger: logger}
 			// this op is valid only for p2p connection
-			stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
+			stdout, stderr, err := w.RunOVSVsctl("del-port", bridgeName, portInfo.PortName)
 			if err != nil {
 				logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 					" error: %v", portInfo.PortName, bridgeName, stdout, stderr, err)

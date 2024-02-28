@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -45,7 +45,8 @@ func GetInterfaceOfPort(logger log.Logger, interfaceName string) (int, error) {
 	var portNo, count int
 	count = 5
 	for count > 0 {
-		ofPort, stdErr, err := util.RunOVSVsctl("--if-exists", "get", "interface", interfaceName, "ofport")
+		w := &OVSRunWrapper{Logger: logger}
+		ofPort, stdErr, err := w.RunOVSVsctl("--if-exists", "get", "interface", interfaceName, "ofport")
 		if err != nil {
 			return -1, errors.Wrap(err, "failed to run command via ovs-vsctl")
 		}
@@ -75,10 +76,12 @@ func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoi
 		log.FromContext(ctx).Warnf("failed to initialize ovs exec helper: %v", err)
 	}
 
+	logger := log.FromContext(ctx).WithField("utils", "ConfigureOvS")
+	w := &OVSRunWrapper{Logger: logger}
 	for _, cp := range l2Connections {
 		if cp.Bridge != "" {
 			// Create ovs bridge for l2 egress point
-			stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-br", cp.Bridge)
+			stdout, stderr, err := w.RunOVSVsctl("--", "--may-exist", "add-br", cp.Bridge)
 			if err != nil {
 				log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
 			}
@@ -93,13 +96,13 @@ func ConfigureOvS(ctx context.Context, l2Connections map[string]*L2ConnectionPoi
 	}
 
 	// Create ovs bridge for client and endpoint connections
-	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-br", bridgeName)
+	stdout, stderr, err := w.RunOVSVsctl("--", "--may-exist", "add-br", bridgeName)
 	if err != nil {
 		log.FromContext(ctx).Warnf("Failed to add bridge %s, stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
 	}
 
 	// Clean the flows from the above created ovs bridge
-	stdout, stderr, err = util.RunOVSOfctl("del-flows", bridgeName)
+	stdout, stderr, err = w.RunOVSOfctl("del-flows", bridgeName)
 	if err != nil {
 		log.FromContext(ctx).Warnf("Failed to cleanup flows on %s "+
 			"stdout: %q, stderr: %q, error: %v", bridgeName, stdout, stderr, err)
@@ -134,12 +137,15 @@ func configureL2Interface(ctx context.Context, cp *L2ConnectionPoint) error {
 			return errors.Wrapf(err, "failed to delete IP address from link device")
 		}
 	}
-	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", cp.Bridge, cp.Interface)
+	logger := log.FromContext(ctx).WithField("utils", "configureL2Interface")
+	w := &OVSRunWrapper{Logger: logger}
+	stdout, stderr, err := w.RunOVSVsctl("--", "--may-exist", "add-port", cp.Bridge, cp.Interface)
 	if err != nil {
 		log.FromContext(ctx).Errorf("Failed to add l2 egress port %s to %s, stdout: %q, stderr: %q,"+
 			" error: %v", cp.Interface, cp.Bridge, stdout, stderr, err)
 		return errors.Wrap(err, "failed to run command via ovs-vsctl")
 	}
+
 	link, err = netlink.LinkByName(cp.Bridge)
 	if err != nil {
 		return errors.Wrapf(err, "failed to find link %s", cp.Bridge)

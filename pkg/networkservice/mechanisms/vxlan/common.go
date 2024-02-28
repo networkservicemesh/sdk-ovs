@@ -31,7 +31,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vxlan"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
@@ -69,7 +68,7 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 		vxlanInterfacesMutex.Lock()
 		defer vxlanInterfacesMutex.Unlock()
 		if _, exists := vxlanRefCountMap[ovsTunnelName]; !exists {
-			if err := newVXLAN(bridgeName, ovsTunnelName, egressIP, remoteIP, port); err != nil {
+			if err := newVXLAN(bridgeName, ovsTunnelName, egressIP, remoteIP, port, logger); err != nil {
 				return err
 			}
 			vxlanRefCountMap[ovsTunnelName] = 0
@@ -90,7 +89,7 @@ func getTunnelPortName(remoteIP string) string {
 }
 
 func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesMutex sync.Locker,
-	vxlanRefCountMap map[string]int, isClient bool) error {
+	vxlanRefCountMap map[string]int, isClient bool, logger log.Logger) error {
 	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		var remoteIP net.IP
 		if !isClient {
@@ -102,7 +101,7 @@ func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesM
 		vxlanInterfacesMutex.Lock()
 		defer vxlanInterfacesMutex.Unlock()
 		if count := vxlanRefCountMap[ovsTunnelName]; count == 1 {
-			if err := deleteVXLAN(bridgeName, ovsTunnelName); err != nil {
+			if err := deleteVXLAN(bridgeName, ovsTunnelName, logger); err != nil {
 				return err
 			}
 			delete(vxlanRefCountMap, ovsTunnelName)
@@ -114,12 +113,14 @@ func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesM
 }
 
 // newVXLAN creates a VXLAN interface instance in OVS
-func newVXLAN(bridgeName, ovsTunnelName string, egressIP, remoteIP net.IP, dstPort uint16) error {
+func newVXLAN(bridgeName, ovsTunnelName string, egressIP, remoteIP net.IP, dstPort uint16, logger log.Logger) error {
 	/* Populate the VXLAN interface configuration */
 	localOptions := "options:local_ip=" + egressIP.String()
 	remoteOptions := "options:remote_ip=" + remoteIP.String()
 	portOption := "options:dst_port=" + strconv.FormatUint(uint64(dstPort), 10)
-	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, ovsTunnelName,
+
+	w := ovsutil.OVSRunWrapper{Logger: logger}
+	stdout, stderr, err := w.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, ovsTunnelName,
 		"--", "set", "interface", ovsTunnelName, "type=vxlan", localOptions,
 		remoteOptions, portOption, "options:key=flow")
 	if err != nil {
@@ -129,9 +130,10 @@ func newVXLAN(bridgeName, ovsTunnelName string, egressIP, remoteIP net.IP, dstPo
 	return nil
 }
 
-func deleteVXLAN(bridgeName, ovsTunnelPort string) error {
+func deleteVXLAN(bridgeName, ovsTunnelPort string, logger log.Logger) error {
+	w := ovsutil.OVSRunWrapper{Logger: logger}
 	/* Populate the VXLAN interface configuration */
-	stdout, stderr, err := util.RunOVSVsctl("del-port", bridgeName, ovsTunnelPort)
+	stdout, stderr, err := w.RunOVSVsctl("del-port", bridgeName, ovsTunnelPort)
 	if err != nil {
 		return errors.Errorf("Failed to delete port %s to %s, stdout: %q, stderr: %q,"+
 			" error: %v", ovsTunnelPort, bridgeName, stdout, stderr, err)

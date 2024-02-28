@@ -1,6 +1,6 @@
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -22,10 +22,10 @@ import (
 	"fmt"
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/tools/ifnames"
+	"github.com/networkservicemesh/sdk-ovs/pkg/tools/utils"
 )
 
 func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPortInfo,
@@ -44,7 +44,8 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 		ofRuleToEndpoint = fmt.Sprintf("priority=100,in_port=%d,"+
 			"actions=output:%d", clientOvsPortInfo.PortNo, endpointOvsPortInfo.PortNo)
 	}
-	stdout, stderr, err := util.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleToClient)
+	w := &utils.OVSRunWrapper{Logger: logger}
+	stdout, stderr, err := w.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleToClient)
 	if err != nil {
 		logger.Infof("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
@@ -55,7 +56,7 @@ func createLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 			" stderr: %s", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 
-	stdout, stderr, err = util.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleToEndpoint)
+	stdout, stderr, err = w.RunOVSOfctl("add-flow", "-OOpenflow13", bridgeName, ofRuleToEndpoint)
 	if err != nil {
 		logger.Errorf("Failed to add flow on %s for port %s stdout: %s"+
 			" stderr: %s, error: %v", bridgeName, clientOvsPortInfo.PortName, stdout, stderr, err)
@@ -81,14 +82,15 @@ func deleteLocalCrossConnect(logger log.Logger, bridgeName string, endpointOvsPo
 	} else {
 		matchForEndpoint = fmt.Sprintf("in_port=%d", endpointOvsPortInfo.PortNo)
 	}
-	stdout, stderr, err := util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, matchForEndpoint)
+	w := &utils.OVSRunWrapper{Logger: logger}
+	stdout, stderr, err := w.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, matchForEndpoint)
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr, err)
 		return errors.Wrapf(err, "failed to delete flow on %s for port %s, stdout: %q, stderr: %q", bridgeName, endpointOvsPortInfo.PortName, stdout, stderr)
 	}
 
-	stdout, stderr, err = util.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d", clientOvsPortInfo.PortNo))
+	stdout, stderr, err = w.RunOVSOfctl("del-flows", "-OOpenflow13", bridgeName, fmt.Sprintf("in_port=%d", clientOvsPortInfo.PortNo))
 	if err != nil {
 		logger.Errorf("Failed to delete flow on %s for port "+
 			"%s, stdout: %q, stderr: %q, error: %v", bridgeName, clientOvsPortInfo.PortName, stdout, stderr, err)

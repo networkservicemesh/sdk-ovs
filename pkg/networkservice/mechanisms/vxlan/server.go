@@ -81,7 +81,7 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(v)); exists {
-			if vxlanServerErr := remove(request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v)); vxlanServerErr != nil {
+			if vxlanServerErr := remove(request.GetConnection(), v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v), logger); vxlanServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", vxlanServerErr.Error())
 			}
 		}
@@ -94,7 +94,7 @@ func (v *vxlanServer) Request(ctx context.Context, request *networkservice.Netwo
 func (v *vxlanServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	_, err := next.Server(ctx).Close(ctx, conn)
 	if mechanism := vxlan.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		vxlanServerErr := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v))
+		vxlanServerErr := remove(conn, v.bridgeName, v.vxlanInterfacesMutex, v.vxlanInterfacesMap, metadata.IsClient(v), log.FromContext(ctx).WithField("vxlanServer", "Close"))
 		ifnames.Delete(ctx, metadata.IsClient(v))
 
 		if err != nil && vxlanServerErr != nil {
