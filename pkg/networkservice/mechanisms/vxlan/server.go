@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -48,9 +48,15 @@ type vxlanServer struct {
 }
 
 // NewServer - returns a new server for the vxlan remote mechanism
-func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int) networkservice.NetworkServiceServer {
+func NewServer(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int, options ...Option) networkservice.NetworkServiceServer {
+	opts := &vxlanOptions{
+		vxlanPort: vxlanDefaultPort,
+	}
+	for _, opt := range options {
+		opt(opts)
+	}
 	return chain.NewNetworkServiceServer(
-		vni.NewServer(tunnelIP),
+		vni.NewServer(tunnelIP, vni.WithTunnelPort(opts.vxlanPort)),
 		&vxlanServer{
 			bridgeName: bridgeName, vxlanInterfacesMutex: mutex, vxlanInterfacesMap: vxlanRefCountMap,
 		},

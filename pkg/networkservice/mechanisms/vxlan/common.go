@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -24,6 +24,7 @@ package vxlan
 import (
 	"context"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -51,6 +52,7 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 			return errors.Errorf("no vxlan DstIP not provided")
 		}
 		var egressIP, remoteIP net.IP
+		var port uint16
 		if !isClient {
 			egressIP = mechanism.DstIP()
 			remoteIP = mechanism.SrcIP()
@@ -58,11 +60,16 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 			remoteIP = mechanism.DstIP()
 			egressIP = mechanism.SrcIP()
 		}
+		if !isClient {
+			port = mechanism.SrcPort()
+		} else {
+			port = mechanism.DstPort()
+		}
 		ovsTunnelName := getTunnelPortName(remoteIP.String())
 		vxlanInterfacesMutex.Lock()
 		defer vxlanInterfacesMutex.Unlock()
 		if _, exists := vxlanRefCountMap[ovsTunnelName]; !exists {
-			if err := newVXLAN(bridgeName, ovsTunnelName, egressIP, remoteIP); err != nil {
+			if err := newVXLAN(bridgeName, ovsTunnelName, egressIP, remoteIP, port); err != nil {
 				return err
 			}
 			vxlanRefCountMap[ovsTunnelName] = 0
@@ -107,13 +114,14 @@ func remove(conn *networkservice.Connection, bridgeName string, vxlanInterfacesM
 }
 
 // newVXLAN creates a VXLAN interface instance in OVS
-func newVXLAN(bridgeName, ovsTunnelName string, egressIP, remoteIP net.IP) error {
+func newVXLAN(bridgeName, ovsTunnelName string, egressIP, remoteIP net.IP, dstPort uint16) error {
 	/* Populate the VXLAN interface configuration */
 	localOptions := "options:local_ip=" + egressIP.String()
 	remoteOptions := "options:remote_ip=" + remoteIP.String()
+	portOption := "options:dst_port=" + strconv.FormatUint(uint64(dstPort), 10)
 	stdout, stderr, err := util.RunOVSVsctl("--", "--may-exist", "add-port", bridgeName, ovsTunnelName,
 		"--", "set", "interface", ovsTunnelName, "type=vxlan", localOptions,
-		remoteOptions, "options:key=flow")
+		remoteOptions, portOption, "options:key=flow")
 	if err != nil {
 		return errors.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
 			" error: %v", ovsTunnelName, bridgeName, stdout, stderr, err)

@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -55,7 +55,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
-	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/l2ovsconnect"
 	"github.com/networkservicemesh/sdk-ovs/pkg/networkservice/mechanisms/kernel"
@@ -73,20 +72,24 @@ func NewSriovServer(ctx context.Context, name string, authzServer networkservice
 	authzMonitorServer networkservice.MonitorConnectionServer, tokenGenerator token.GeneratorFunc,
 	clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP, pciPool resourcepool.PCIPool,
 	resourcePool resourcepool.ResourcePool, sriovConfig *config.Config, dialTimeout time.Duration,
-	l2Connections map[string]*ovsutil.L2ConnectionPoint, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	l2Connections map[string]*ovsutil.L2ConnectionPoint, options ...Option) (endpoint.Endpoint, error) {
 	resourceLock := &sync.Mutex{}
 	resourcePoolClient := resourcepool.NewClient(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 	resourcePoolServer := resourcepool.NewServer(sriov.KernelDriver, resourceLock, pciPool, resourcePool, sriovConfig)
 
 	return newEndPoint(ctx, name, authzMonitorServer, authzServer, resourcePoolServer, resourcePoolClient, tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, options...)
 }
 
 func newEndPoint(ctx context.Context, name string, authzMonitorServer networkservice.MonitorConnectionServer,
 	authzServer, resourcePoolServer networkservice.NetworkServiceServer,
 	resourcePoolClient networkservice.NetworkServiceClient, tokenGenerator token.GeneratorFunc, clientURL *url.URL,
 	bridgeName string, tunnelIPCidr net.IP, dialTimeout time.Duration, l2Connections map[string]*ovsutil.L2ConnectionPoint,
-	clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	options ...Option) (endpoint.Endpoint, error) {
+	opts := &forwarderOptions{}
+	for _, opt := range options {
+		opt(opts)
+	}
 	tunnelIP, err := ovsutil.ParseTunnelIP(tunnelIPCidr)
 	if err != nil {
 		return nil, err
@@ -106,11 +109,11 @@ func newEndPoint(ctx context.Context, name string, authzMonitorServer networkser
 	nseClient := registryclient.NewNetworkServiceEndpointRegistryClient(ctx,
 		registryclient.WithClientURL(clientURL),
 		registryclient.WithNSEAdditionalFunctionality(registryrecvfd.NewNetworkServiceEndpointRegistryClient()),
-		registryclient.WithDialOptions(clientDialOptions...),
+		registryclient.WithDialOptions(opts.dialOpts...),
 	)
 	nsClient := registryclient.NewNetworkServiceRegistryClient(ctx,
 		registryclient.WithClientURL(clientURL),
-		registryclient.WithDialOptions(clientDialOptions...))
+		registryclient.WithDialOptions(opts.dialOpts...))
 
 	additionalFunctionality := []networkservice.NetworkServiceServer{
 		metadata.NewServer(),
@@ -134,7 +137,7 @@ func newEndPoint(ctx context.Context, name string, authzMonitorServer networkser
 					Server:    kernel.NewVethServer(bridgeName, parentIfMutex, parentIfRefCount),
 				},
 			),
-			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+			vxlanmech.MECHANISM: vxlan.NewServer(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces, opts.vxlanOpts...),
 		}),
 		inject.NewServer(),
 		connectioncontextkernel.NewServer(),
@@ -142,7 +145,7 @@ func newEndPoint(ctx context.Context, name string, authzMonitorServer networkser
 			client.NewClient(ctx,
 				client.WithoutRefresh(),
 				client.WithName(name),
-				client.WithDialOptions(clientDialOptions...),
+				client.WithDialOptions(opts.dialOpts...),
 				client.WithDialTimeout(dialTimeout),
 				client.WithAdditionalFunctionality(
 					mechanismtranslation.NewClient(),
@@ -152,7 +155,7 @@ func newEndPoint(ctx context.Context, name string, authzMonitorServer networkser
 					// mechanisms
 					kernel.NewClient(bridgeName, parentIfMutex, parentIfRefCount),
 					resourcePoolClient,
-					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces),
+					vxlan.NewClient(tunnelIP, bridgeName, vxlanInterfacesMutex, vxlanInterfaces, opts.vxlanOpts...),
 					vlan.NewClient(bridgeName, l2Connections),
 					filtermechanisms.NewClient(),
 					recvfd.NewClient(),
@@ -175,7 +178,7 @@ func newEndPoint(ctx context.Context, name string, authzMonitorServer networkser
 func NewKernelServer(ctx context.Context, name string, authzServer networkservice.NetworkServiceServer,
 	authzMonitorServer networkservice.MonitorConnectionServer, tokenGenerator token.GeneratorFunc,
 	clientURL *url.URL, bridgeName string, tunnelIPCidr net.IP, dialTimeout time.Duration,
-	l2Connections map[string]*ovsutil.L2ConnectionPoint, clientDialOptions ...grpc.DialOption) (endpoint.Endpoint, error) {
+	l2Connections map[string]*ovsutil.L2ConnectionPoint, options ...Option) (endpoint.Endpoint, error) {
 	return newEndPoint(ctx, name, authzMonitorServer, authzServer, null.NewServer(), null.NewClient(), tokenGenerator,
-		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, clientDialOptions...)
+		clientURL, bridgeName, tunnelIPCidr, dialTimeout, l2Connections, options...)
 }

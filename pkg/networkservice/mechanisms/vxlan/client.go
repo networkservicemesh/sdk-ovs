@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -48,12 +48,18 @@ type vxlanClient struct {
 }
 
 // NewClient returns a Vxlan client chain element
-func NewClient(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int) networkservice.NetworkServiceClient {
+func NewClient(tunnelIP net.IP, bridgeName string, mutex sync.Locker, vxlanRefCountMap map[string]int, options ...Option) networkservice.NetworkServiceClient {
+	opts := &vxlanOptions{
+		vxlanPort: vxlanDefaultPort,
+	}
+	for _, opt := range options {
+		opt(opts)
+	}
 	return chain.NewNetworkServiceClient(
 		&vxlanClient{
 			bridgeName: bridgeName, vxlanInterfacesMutex: mutex, vxlanInterfacesMap: vxlanRefCountMap,
 		},
-		vni.NewClient(tunnelIP),
+		vni.NewClient(tunnelIP, vni.WithTunnelPort(opts.vxlanPort)),
 	)
 }
 
