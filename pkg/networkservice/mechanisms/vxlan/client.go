@@ -94,7 +94,7 @@ func (c *vxlanClient) Request(ctx context.Context, request *networkservice.Netwo
 func (c *vxlanClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	_, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	vxlanClientErr := remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true)
+	vxlanClientErr := remove(conn, c.bridgeName, c.vxlanInterfacesMutex, c.vxlanInterfacesMap, true, log.FromContext(ctx).WithField("vxlanClient", "Close"))
 
 	if err != nil && vxlanClientErr != nil {
 		return nil, errors.Wrap(err, vxlanClientErr.Error())
