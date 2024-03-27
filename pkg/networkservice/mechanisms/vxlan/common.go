@@ -56,14 +56,11 @@ func add(ctx context.Context, logger log.Logger, conn *networkservice.Connection
 		if !isClient {
 			egressIP = mechanism.DstIP()
 			remoteIP = mechanism.SrcIP()
+			port = mechanism.DstPort()
 		} else {
+			port = mechanism.SrcPort()
 			remoteIP = mechanism.DstIP()
 			egressIP = mechanism.SrcIP()
-		}
-		if !isClient {
-			port = mechanism.SrcPort()
-		} else {
-			port = mechanism.DstPort()
 		}
 		ovsTunnelName := getTunnelPortName(remoteIP.String())
 		vxlanInterfacesMutex.Lock()
