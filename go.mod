@@ -7,9 +7,9 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
 	github.com/networkservicemesh/api v1.12.1-rc.1.0.20240325104451-92facbceb926
-	github.com/networkservicemesh/sdk v0.5.1-0.20240402094855-f0105d638501
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20240402095331-8baa231c86f9
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20240402095822-3395f55880b4
+	github.com/networkservicemesh/sdk v0.5.1-0.20240404173808-77fc1533d314
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20240404174302-3b4ce9aa81c4
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20240404174829-8b7672bd61d4
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
