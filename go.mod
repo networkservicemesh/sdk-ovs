@@ -6,6 +6,7 @@ require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
+	github.com/google/uuid v1.3.1
 	github.com/networkservicemesh/api v1.13.1-0.20240411170402-f357d8c715a2
 	github.com/networkservicemesh/sdk v0.5.1-0.20240415093720-3eafbf6156d7
 	github.com/networkservicemesh/sdk-kernel v0.0.0-20240415094224-0146a64a7221
@@ -48,7 +49,6 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
-	github.com/google/uuid v1.3.1 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
