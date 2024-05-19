@@ -7,10 +7,10 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.1
-	github.com/networkservicemesh/api v1.13.1-0.20240424210452-d0df98851760
-	github.com/networkservicemesh/sdk v0.5.1-0.20240518183313-7b51d9c9b5d0
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20240518183542-950200102051
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20240518183918-53551c767301
+	github.com/networkservicemesh/api v1.13.1-rc.1
+	github.com/networkservicemesh/sdk v1.13.1-rc.1
+	github.com/networkservicemesh/sdk-kernel v1.13.1-rc.1
+	github.com/networkservicemesh/sdk-sriov v1.13.1-rc.1
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
@@ -50,7 +50,6 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/googleapis/gnostic v0.5.5 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -79,15 +78,8 @@ require (
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
 	github.com/zeebo/errs v1.3.0 // indirect
 	go.opentelemetry.io/otel v1.20.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.43.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.20.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.20.0 // indirect
-	go.opentelemetry.io/otel/exporters/prometheus v0.43.0 // indirect
 	go.opentelemetry.io/otel/metric v1.20.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.20.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v1.20.0 // indirect
 	go.opentelemetry.io/otel/trace v1.20.0 // indirect
-	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
@@ -99,7 +91,6 @@ require (
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20231012201019-e917dd12ba7a // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231030173426-d783a09b4405 // indirect
 	gopkg.in/fsnotify/fsnotify.v1 v1.4.7 // indirect
 	gopkg.in/gcfg.v1 v1.2.3 // indirect
