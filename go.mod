@@ -8,9 +8,9 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/google/uuid v1.3.1
 	github.com/networkservicemesh/api v1.13.1-0.20240424210452-d0df98851760
-	github.com/networkservicemesh/sdk v0.5.1-0.20240518183313-7b51d9c9b5d0
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20240518183542-950200102051
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20240518183918-53551c767301
+	github.com/networkservicemesh/sdk v0.5.1-0.20240529105330-c01f9e100851
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20240529105556-06cfa696acac
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20240529105909-c76bb0360fa8
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
