@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -25,8 +25,6 @@ package vlan
 import (
 	"context"
 	"fmt"
-
-	"github.com/ovn-org/ovn-kubernetes/go-controller/pkg/util"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -119,15 +117,16 @@ func (c *vlanClient) addDelVlan(ctx context.Context, logger log.Logger, conn *ne
 	if !ok {
 		return nil
 	}
+	w := &ovsutil.OVSRunWrapper{Logger: logger}
 	if isAdd {
 		// delete the ns client port from br-nsm bridge and add it into l2 connect bridge with vlan tag.
-		stdout, stderr, err := util.RunOVSVsctl("del-port", c.bridgeName, nsClientOvsPortInfo.PortName)
+		stdout, stderr, err := w.RunOVSVsctl("del-port", c.bridgeName, nsClientOvsPortInfo.PortName)
 		if err != nil {
 			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 				" error: %v", nsClientOvsPortInfo.PortName, c.bridgeName, stdout, stderr, err)
 			return errors.Wrapf(err, "Failed to delete port %s from %s, stdout: %q, stderr: %q", nsClientOvsPortInfo.PortName, c.bridgeName, stdout, stderr)
 		}
-		stdout, stderr, err = util.RunOVSVsctl("--", "--may-exist", "add-port", l2Point.Bridge,
+		stdout, stderr, err = w.RunOVSVsctl("--", "--may-exist", "add-port", l2Point.Bridge,
 			nsClientOvsPortInfo.PortName, fmt.Sprintf("tag=%d", mechanism.GetVlanID()))
 		if err != nil {
 			logger.Errorf("Failed to add port %s to %s, stdout: %q, stderr: %q,"+
@@ -137,7 +136,7 @@ func (c *vlanClient) addDelVlan(ctx context.Context, logger log.Logger, conn *ne
 		nsClientOvsPortInfo.IsL2Connect = true
 		nsClientOvsPortInfo.IsCrossConnected = true
 	} else {
-		stdout, stderr, err := util.RunOVSVsctl("del-port", l2Point.Bridge, nsClientOvsPortInfo.PortName)
+		stdout, stderr, err := w.RunOVSVsctl("del-port", l2Point.Bridge, nsClientOvsPortInfo.PortName)
 		if err != nil {
 			logger.Errorf("Failed to delete port %s from %s, stdout: %q, stderr: %q,"+
 				" error: %v", nsClientOvsPortInfo.PortName, l2Point.Bridge, stdout, stderr, err)
