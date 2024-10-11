@@ -9,11 +9,11 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/networkservicemesh/api v1.13.4-0.20240815101554-fdbfcd84fd0e
 	github.com/networkservicemesh/sdk v0.5.1-0.20241007094110-76b397f06202
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20241007094340-77b47a913df5
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20241007094739-599c22782906
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20241011104010-f42c758ad1d8
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20241011104334-dd5685af6423
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
-	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
+	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
 	google.golang.org/grpc v1.60.1
 	google.golang.org/protobuf v1.33.0
 	k8s.io/utils v0.0.0-20210930125809-cb0fa318a74b
@@ -73,7 +73,7 @@ require (
 	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/tchap/go-patricia/v2 v2.3.1 // indirect
 	github.com/urfave/cli/v2 v2.3.0 // indirect
-	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74 // indirect
+	github.com/vishvananda/netns v0.0.4 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
