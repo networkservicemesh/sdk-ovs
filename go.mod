@@ -1,6 +1,6 @@
 module github.com/networkservicemesh/sdk-ovs
 
-go 1.20
+go 1.23
 
 require (
 	github.com/Mellanox/sriovnet v1.0.3-0.20210630121212-0453bd4b7fbc
