@@ -54,6 +54,9 @@ linters-settings:
     simple: true
     range-loops: true
     for-loops: false
+  gosec:
+    excludes:
+      - G115
   gocritic:
     enabled-checks:
       - appendAssign
