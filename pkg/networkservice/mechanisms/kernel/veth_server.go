@@ -1,5 +1,7 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2024 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,7 +74,15 @@ func (k *kernelVethServer) Request(ctx context.Context, request *networkservice.
 		defer cancelClose()
 		if _, exists := ifnames.LoadAndDelete(closeCtx, metadata.IsClient(k)); exists {
 			k.parentIfmutex.Lock()
-			if kernelServerErr := resetVeth(closeCtx, logger, request.GetConnection(), k.bridgeName, k.parentIfRefCountMap, k.serviceToparentIfMap, false, metadata.IsClient(k)); kernelServerErr != nil {
+			if kernelServerErr := resetVeth(
+				closeCtx,
+				logger,
+				request.GetConnection(),
+				k.bridgeName,
+				k.parentIfRefCountMap,
+				k.serviceToparentIfMap,
+				false, metadata.IsClient(k),
+			); kernelServerErr != nil {
 				err = errors.Wrapf(err, "connection closed with error: %s", kernelServerErr.Error())
 			}
 			k.parentIfmutex.Unlock()
