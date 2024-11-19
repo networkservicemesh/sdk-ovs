@@ -1,5 +1,7 @@
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2024 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +46,11 @@ func NewClient(bridgeName string) networkservice.NetworkServiceClient {
 	return &l2ConnectClient{bridgeName}
 }
 
-func (c *l2ConnectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+func (c *l2ConnectClient) Request(
+	ctx context.Context,
+	request *networkservice.NetworkServiceRequest,
+	opts ...grpc.CallOption,
+) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("l2ConnectClient", "Request")
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)

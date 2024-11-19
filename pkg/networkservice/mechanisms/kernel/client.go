@@ -1,5 +1,7 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2024 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +56,11 @@ func NewClient(bridgeName string, mutex sync.Locker, parentIfRefCountMap map[str
 		serviceToparentIfMap: make(map[string]string)}
 }
 
-func (c *kernelClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+func (c *kernelClient) Request(
+	ctx context.Context,
+	request *networkservice.NetworkServiceRequest,
+	opts ...grpc.CallOption,
+) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("kernelClient", "Request")
 
 	_, isEstablished := ifnames.Load(ctx, metadata.IsClient(c))
