@@ -10,9 +10,9 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3
-	github.com/networkservicemesh/sdk v0.5.1-0.20260401123920-4ec46252196e
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20260401124207-9427e078e43c
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20260401124608-5e32013ff947
+	github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20260407081703-189df95f1d64
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20260407082104-8dcf72c1303f
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
@@ -42,7 +42,7 @@ require (
 	github.com/edwarnicke/serialize v1.0.7 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
-	github.com/go-jose/go-jose/v4 v4.1.3 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gobwas/glob v0.2.3 // indirect
