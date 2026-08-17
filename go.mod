@@ -11,8 +11,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3
 	github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20260407081703-189df95f1d64
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20260407082104-8dcf72c1303f
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20260817125358-4af24281a6a0
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20260817132431-fefd46d691ab
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
