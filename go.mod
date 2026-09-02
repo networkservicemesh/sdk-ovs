@@ -10,7 +10,7 @@ require (
 	github.com/networkservicemesh/api v1.19.0-rc.1.0.20260824081105-7ccb73c2b1b0
 	github.com/networkservicemesh/sdk v0.5.1-0.20260824084712-ee8eec42a3ce
 	github.com/networkservicemesh/sdk-kernel v0.0.0-20260824090242-eac4345ad1d9
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20260824095542-f70b6c9639e0
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20260902133106-8bdfb3794099
 	github.com/ovn-org/ovn-kubernetes/go-controller v0.0.0-20210826171620-f06c53111a31
 	github.com/pkg/errors v0.9.1
 	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
